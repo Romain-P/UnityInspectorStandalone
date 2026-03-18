@@ -76,32 +76,33 @@ UnityInspector is a single-DLL runtime inspection tool that allows you to explor
 
 - Windows 10 or later
 - Unity game (Mono or IL2CPP) running on **DirectX 11**
-- DLL injector (any injector will work)
+- DLL injector (optional)
 
 > **Note:** Only DirectX 11 is supported. DX12 and Vulkan are **not** supported. Launch your game with `-force-d3d11` to ensure DX11 mode.
 
 ### Steps
 
 1. Download the latest `UnityInspector.dll` from [Releases](https://github.com/PicoShot/UnityInspectorStandalone/releases)
-2. Inject the DLL into your target Unity game process using your preferred injector
+2. Rename dll to **version.dll** and copy it to game directory and run a game or inject the DLL into your target Unity game process using your preferred injector 
 3. Press `INSERT` to toggle the menu
 
 ---
 
 ## Supported Unity Versions
 
-| Version | Mono | IL2CPP |
-|---------|------|--------|
-| 2015-2020.x  | [?] | [?] |
-| 2021.x  | [?] | [!] |
-| 2022.x  | [!] | [+] |
-| 2023.x  | [?] | [?] |
-| 6000.x  | [+] | [+] |
+| Version     | Mono | IL2CPP |
+| ----------- | ---- | ------ |
+| 2015-2020.x | [?]  | [?]    |
+| 2021.x      | [?]  | [!]    |
+| 2022.x      | [!]  | [+]    |
+| 2023.x      | [?]  | [?]    |
+| 6000.x      | [+]  | [+]    |
 
-- [?] Not Tested  
+- [?] Not Tested
 - [-] Not Supported
 - [!] Have Bugs
 - [+] Supported
+
 ---
 
 ## Credits

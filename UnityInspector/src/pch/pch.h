@@ -83,9 +83,9 @@ using Ray = UT::Ray;
 using RaycastHit = UT::RaycastHit;
 using Texture = UT::Texture;
 using Texture2D = UT::Texture2D;
-//using Sprite = UT::Sprite;
+using Sprite = UT::Sprite;
 using Material = UT::Material;
-//using Shader = UT::Shader;
+using Shader = UT::Shader;
 
 // Proxy exports for version.dll
 #pragma comment(linker, "/export:GetFileVersionInfoA=C:\\Windows\\System32\\version.GetFileVersionInfoA")

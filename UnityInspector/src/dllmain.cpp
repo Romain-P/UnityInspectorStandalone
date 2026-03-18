@@ -16,7 +16,7 @@ static void Init(HMODULE hMod)
     };
 
     bool hookSuccess = false;
-    const auto config = Core::config.get();
+    const auto& config = Core::config;
     uint8_t try_count = 0;
 
     while (!WindowFinder::FindGameWindow())

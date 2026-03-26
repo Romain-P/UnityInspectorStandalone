@@ -10,7 +10,7 @@
 
 void Loader::Load()
 {
-	Core::config->LoadConfig();
+	Core::context->settings.Load();
 	FixSteam();
 	CloseHandle(CreateThread(nullptr, 0, LoaderThread, nullptr, 0, nullptr));
 }
@@ -22,13 +22,13 @@ void* Loader::HRuntimeInvoke(void* method, void* obj, void** params, void** exc)
 	DetourDetach(&reinterpret_cast<PVOID&>(oRuntimeInvoke), HRuntimeInvoke);
 	DetourTransactionCommit();
 
-	const auto& config = Core::config;
+	const auto& config = Core::context;
 
-	if (config->ini.debug_console) console::StartConsole(X("Pico Debug Console"), false);
+	if (config->settings.ini.debug_console) console::StartConsole(X("Pico Debug Console"), false);
 
 	LOG_INFO(X("il2cpp detected & intercepted, initializing..."));
 
-	UR::Init(config->internal.gameHandle, config->internal.unityMode);
+	UR::Init(config->state.gameHandle, config->state.unityMode);
 	Hooks::Init();
 
 	LOG_INFO(X("initialized successfully"));
@@ -40,7 +40,7 @@ void* Loader::HRuntimeInvoke(void* method, void* obj, void** params, void** exc)
 
 DWORD WINAPI Loader::MonoInitThread(LPVOID)
 {
-	const auto& config = Core::config->internal;
+	const auto& config = Core::context->state;
 
 	console::StartConsole(X("Pico Debug Console"), false);
 	LOG_INFO(X("mono loaded, initializing..."));
@@ -115,8 +115,8 @@ void Loader::HookRuntimeInvoke(HMODULE gameAssembly, UR::Mode mode)
 
 void Loader::FixSteam()
 {
-	if (Core::config->ini.appid == 0) return;
-	auto appid = std::to_string(Core::config->ini.appid);
+	if (Core::context->settings.ini.appid == 0) return;
+	auto appid = std::to_string(Core::context->settings.ini.appid);
 	SetEnvironmentVariableA(X("SteamClientLaunch"), X("1"));
 	SetEnvironmentVariableA(X("SteamGameId"), appid.c_str());
 	SetEnvironmentVariableA(X("SteamAppId"), appid.c_str());
@@ -174,8 +174,8 @@ void Loader::CleanupAndExit()
 
 DWORD WINAPI Loader::OverlayInitThread(LPVOID)
 {
-	auto& config = Core::config;
-	if (!config->ini.internal_overlay && !config->ini.external_overlay)
+	auto& config = Core::context;
+	if (!config->settings.ini.internal_overlay && !config->settings.ini.external_overlay)
 		return NULL;
 
 	bool hookSuccess = false;
@@ -192,7 +192,7 @@ DWORD WINAPI Loader::OverlayInitThread(LPVOID)
 		std::this_thread::sleep_for(2s);
 	}
 
-	if (config->ini.internal_overlay)
+	if (config->settings.ini.internal_overlay)
 	{
 		for (const auto& [method, name] : hookMethods)
 		{
@@ -205,7 +205,7 @@ DWORD WINAPI Loader::OverlayInitThread(LPVOID)
 		}
 	}
 
-	if (!hookSuccess && config->ini.external_overlay)
+	if (!hookSuccess && config->settings.ini.external_overlay)
 	{
 		HWND gameHwnd = nullptr;
 		for (uint8_t i = 0; i < 10 && !gameHwnd; i++)
@@ -230,14 +230,14 @@ DWORD WINAPI Loader::OverlayInitThread(LPVOID)
 			CleanupAndExit();
 		}
 
-		config->internal.externalOverlay = externalOverlay.get();
+		config->state.externalOverlay = externalOverlay.get();
 		InputForwarder::Initialize(externalOverlay->GetOverlayHwnd(), gameHwnd);
-		externalOverlay->SetInputCapture(config->internal.showImGui);
+		externalOverlay->SetInputCapture(config->state.showMenu);
 
 		LOG_INFO(X("External overlay initialized successfully."));
 		externalOverlay->RunRenderLoop();
 
-		config->internal.externalOverlay = nullptr;
+		config->state.externalOverlay = nullptr;
 		InputForwarder::Shutdown();
 		externalOverlay->Destroy();
 		LOG_INFO(X("External overlay shut down."));
@@ -251,7 +251,7 @@ DWORD WINAPI Loader::OverlayInitThread(LPVOID)
 
 DWORD WINAPI Loader::LoaderThread(LPVOID)
 {
-	auto& config = Core::config->internal;
+	auto& config = Core::context->state;
 	do
 	{
 		if (auto module = GetModuleHandleA(X("GameAssembly.dll")); module)

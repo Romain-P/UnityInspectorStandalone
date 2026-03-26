@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "window.h"
 #include "core/core.h"
 #include "hooks/hooks.h"
@@ -6,6 +6,7 @@
 #include "gui/fonts/Roboto_font.h"
 #include "input_forwarder.h"
 #include "external_overlay.h"
+#include "input_manager.h"
 
 void Window::SetMenuStyle() {
     auto& style = ImGui::GetStyle();
@@ -138,23 +139,7 @@ void Window::UpdateExternalInput()
 {
     if (!g_ImGuiInitialized) return;
 
-    if (InputForwarder::IsMenuTogglePressed()) {
-        auto& menu = Core::config->internal.showImGui;
-        menu = !menu;
-        ImGui::GetIO().MouseDrawCursor = menu;
-        ClipCursor(nullptr);
-
-        if (Core::config->internal.externalOverlay) Core::config->internal.externalOverlay->SetInputCapture(menu);
-    }
-
-    if (InputForwarder::IsCursorTogglePressed()) 
-    {
-        static bool cursor = false;
-        cursor = !cursor;
-        cursor ? ShowCursor(TRUE) : ShowCursor(FALSE);
-    }
-
-    if (InputForwarder::IsCursorUnlockPressed()) ClipCursor(nullptr);
+    InputManager::ProcessExternal();
 }
 
 LRESULT Window::MyWndProc(const HWND hWnd, const UINT uMsg, const WPARAM wParam, const LPARAM lParam)
@@ -188,36 +173,8 @@ LRESULT Window::MyWndProc(const HWND hWnd, const UINT uMsg, const WPARAM wParam,
         }
     }
 
-    if (uMsg == WM_KEYDOWN) 
-    {
-        switch (wParam)
-        {
-		case VK_INSERT:
-        {
-            auto& menu = Core::config->internal.showImGui;
-            menu = !menu;
-            ImGui::GetIO().MouseDrawCursor = menu;
-            ClipCursor(nullptr);
-            return 2;
-        }
-        case VK_F5:
-        {
-			// toggles cursor visibility
-			static bool cursor = false;
-			cursor = !cursor;
-            cursor ? ShowCursor(TRUE) : ShowCursor(FALSE);
-            return 2;
-        }
-        case VK_F6:
-        {
-			// unlocks cursor
-            ClipCursor(nullptr);
-            return 2;
-        }
-        default:
-            break;
-        }
-    }
+    if (InputManager::ProcessMessage(uMsg, wParam))
+        return 2;
 
     return 1;
 }

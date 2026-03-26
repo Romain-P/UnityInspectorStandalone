@@ -10,9 +10,9 @@ void DebugTab::Render()
 	ImGui::Separator();
 	ImGui::Spacing();
 
-	ImGui::Checkbox(X("Enable Inspector"), &Core::config->inspector.enabled);
+	ImGui::Checkbox(X("Enable Inspector"), &Core::context->settings.inspector.enabled);
 
-	ImGui::Checkbox(X("Show Assembly Explorer"), &Core::config->inspector.showAssemblyExplorer);
+	ImGui::Checkbox(X("Show Assembly Explorer"), &Core::context->settings.inspector.showAssemblyExplorer);
 	if (ImGui::IsItemHovered()) ImGui::SetTooltip("Open a window to browse all loaded assemblies and their classes");
 
 	ImGui::Spacing();
@@ -20,7 +20,7 @@ void DebugTab::Render()
 	ImGui::Spacing();
 
 	ImGui::Text(X("Debug Console"));
-	ImGui::Checkbox(X("Show Debug Console"), &Core::config->inspector.showDebugConsole);
+	ImGui::Checkbox(X("Show Debug Console"), &Core::context->settings.inspector.showDebugConsole);
 
 	ImGui::Spacing();
 	ImGui::Separator();

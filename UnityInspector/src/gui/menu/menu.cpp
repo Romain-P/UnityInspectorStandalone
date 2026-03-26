@@ -16,7 +16,7 @@ void Menu::Render()
 {
 	if (!s_Initialized) Init();
 
-	if (Core::config->internal.showImGui)
+	if (Core::context->state.showMenu)
 	{
 		ImGui::SetNextWindowSize(ImVec2(550, 350), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowPos(ImVec2(600, 400), ImGuiCond_FirstUseEver);
@@ -27,7 +27,7 @@ void Menu::Render()
 		const char* menuTitle = X("UnityInspector (Release)");
 #endif
 
-		ImGui::Begin(menuTitle, &Core::config->internal.showImGui, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoResize);
+		ImGui::Begin(menuTitle, &Core::context->state.showMenu, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoResize);
 
 		if (ImGui::BeginTabBar(X("MainTabs"), ImGuiTabBarFlags_NoCloseWithMiddleMouseButton))
 		{

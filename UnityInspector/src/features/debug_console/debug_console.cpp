@@ -83,7 +83,7 @@ std::string DebugConsole::GetCallingSource()
 
 void DebugConsole::Render()
 {
-    if (!Core::config->inspector.showDebugConsole || !Core::config->internal.showImGui) return;
+    if (!Core::context->settings.inspector.showDebugConsole || !Core::context->state.showMenu) return;
     
     RenderConsoleWindow();
 }
@@ -205,7 +205,7 @@ void DebugConsole::RenderConsoleWindow()
     ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
     
     ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar;
-    if (!ImGui::Begin("Debug Console", &Core::config->inspector.showDebugConsole, windowFlags))
+    if (!ImGui::Begin("Debug Console", &Core::context->settings.inspector.showDebugConsole, windowFlags))
     {
         ImGui::End();
         return;

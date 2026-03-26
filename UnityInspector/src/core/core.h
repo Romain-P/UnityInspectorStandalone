@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "config/config.h"
 #include "helper/helper.h"
 
@@ -12,6 +12,6 @@ struct IFeature
 class Core 
 {
 public:
-	inline static auto config = std::make_unique<Config>();
+	inline static auto context = std::make_unique<AppContext>();
 	static std::vector<std::unique_ptr<IFeature>> features;
 };

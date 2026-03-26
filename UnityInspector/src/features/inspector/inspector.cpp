@@ -6,8 +6,8 @@ Inspector::~Inspector() = default;
 
 void Inspector::Update(const float deltaTime)
 {
-	const auto& [Enabled, AutoUpdateObject, AutoRefresh, ShowAssemblyExplorer, ShowDebugConsole] = Core::config->inspector;
-	if (!Enabled || !Core::config->internal.showImGui) return;
+	const auto& [Enabled, AutoUpdateObject, AutoRefresh, ShowAssemblyExplorer, ShowDebugConsole] = Core::context->settings.inspector;
+	if (!Enabled || !Core::context->state.showMenu) return;
 
 	UR::ThreadAttach();
 
@@ -30,7 +30,7 @@ void Inspector::Update(const float deltaTime)
 
 void Inspector::Render()
 {
-	if (!Core::config->inspector.enabled || !Core::config->internal.showImGui) return;
+	if (!Core::context->settings.inspector.enabled || !Core::context->state.showMenu) return;
 
 	UR::ThreadAttach();
 
@@ -44,7 +44,7 @@ void Inspector::Render()
 		}
 
 		ImGui::SameLine();
-		ImGui::Checkbox("Auto", &Core::config->inspector.autoRefresh);
+		ImGui::Checkbox("Auto", &Core::context->settings.inspector.autoRefresh);
 
 		ImGui::SameLine();
 		ImGui::TextDisabled("| %zu objects", rootNodes.size());

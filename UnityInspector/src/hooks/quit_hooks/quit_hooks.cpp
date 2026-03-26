@@ -4,13 +4,13 @@
 
 void UNITY_CALLING_CONVENTION QuitHooks::HApplicationQuit0()
 {
-	if (Core::config->ini.avoid_quiting) return;
+	if (Core::context->settings.ini.avoid_quiting) return;
 	HookManager::Fcall(HApplicationQuit0);
 }
 
 void UNITY_CALLING_CONVENTION QuitHooks::HApplicationQuit1(int exitCode)
 {
-	if (Core::config->ini.avoid_quiting) return;
+	if (Core::context->settings.ini.avoid_quiting) return;
 	HookManager::Fcall(HApplicationQuit0);
 }
 

@@ -5,7 +5,7 @@
 
 void AssemblyExplorer::Update(const float deltaTime)
 {
-    const auto& [Enabled, AutoUpdateObject, AutoRefresh, ShowAssemblyExplorer, ShowDebugConsole] = Core::config->inspector;
+    const auto& [Enabled, AutoUpdateObject, AutoRefresh, ShowAssemblyExplorer, ShowDebugConsole] = Core::context->settings.inspector;
     if (!Enabled) return;
     
     if (!dataLoaded && !UR::assembly.empty())
@@ -27,7 +27,7 @@ void AssemblyExplorer::Update(const float deltaTime)
 
 void AssemblyExplorer::Render()
 {
-    if (!Core::config->inspector.showAssemblyExplorer || !Core::config->internal.showImGui) return;
+    if (!Core::context->settings.inspector.showAssemblyExplorer || !Core::context->state.showMenu) return;
     
     RenderAssemblyExplorerWindow();
 }
@@ -106,13 +106,13 @@ void AssemblyExplorer::RefreshAssemblyData()
 
 void AssemblyExplorer::RenderAssemblyExplorerWindow()
 {
-    if (!Core::config->inspector.showAssemblyExplorer) return;
+    if (!Core::context->settings.inspector.showAssemblyExplorer) return;
     
     UR::ThreadAttach();
     
     ImGui::SetNextWindowSize(ImVec2(1200, 700), ImGuiCond_FirstUseEver);
     
-    if (ImGui::Begin("Assembly Explorer", &Core::config->inspector.showAssemblyExplorer))
+    if (ImGui::Begin("Assembly Explorer", &Core::context->settings.inspector.showAssemblyExplorer))
     {
         if (ImGui::Button("Refresh"))
         {

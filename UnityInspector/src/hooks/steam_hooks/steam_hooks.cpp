@@ -16,7 +16,7 @@ bool UNITY_CALLING_CONVENTION SteamHooks::HRestartAppIfNecessary(uint32_t appid)
 
 void UNITY_CALLING_CONVENTION SteamHooks::HFPSteamInit(uint32_t appid, bool asyncCallbacks)
 {
-	appid = Core::config->ini.appid;
+	appid = Core::context->settings.ini.appid;
 	LOG_DEBUG(X("F Init called."));
 	HookManager::Fcall(HFPSteamInit, appid, asyncCallbacks);
 }
@@ -24,20 +24,20 @@ void UNITY_CALLING_CONVENTION SteamHooks::HFPSteamInit(uint32_t appid, bool asyn
 void UNITY_CALLING_CONVENTION SteamHooks::HHeathenSteamInit(AppData appId)
 {
 	LOG_DEBUG(X("H Init called."));
-	appId.id = Core::config->ini.appid;
+	appId.id = Core::context->settings.ini.appid;
 	HookManager::Fcall(HHeathenSteamInit, appId);
 }
 
 void UNITY_CALLING_CONVENTION SteamHooks::HHeathenSteamInit2(AppData appId, void* actions)
 {
 	LOG_DEBUG(X("H Init (with actions) called."));
-	appId.id = Core::config->ini.appid;
+	appId.id = Core::context->settings.ini.appid;
 	HookManager::Fcall(HHeathenSteamInit2, appId, actions);
 }
 
 void SteamHooks::Install()
 {
-	if (Core::config->ini.appid == 0) return;
+	if (Core::context->settings.ini.appid == 0) return;
 
 	auto* steamworksModule = UR::Get(X("com.rlabrecque.steamworks.net.dll"));
 	if (steamworksModule)

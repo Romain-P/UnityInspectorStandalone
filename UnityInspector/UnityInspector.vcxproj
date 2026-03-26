@@ -184,6 +184,7 @@
     <ClInclude Include="src\loader\loader.h" />
     <ClInclude Include="src\pch\pch.h" />
     <ClInclude Include="src\gui\window\window.h" />
+    <ClInclude Include="src\gui\window\input_manager.h" />
     <ClInclude Include="src\gui\window\window_finder.h" />
     <ClInclude Include="src\gui\window\external_overlay.h" />
     <ClInclude Include="src\gui\window\input_forwarder.h" />
@@ -242,6 +243,7 @@
     <ClCompile Include="src\gui\menu\info_tab\info_tab.cpp" />
     <ClCompile Include="src\gui\menu\debug_tab\debug_tab.cpp" />
     <ClCompile Include="src\gui\window\window.cpp" />
+    <ClCompile Include="src\gui\window\input_manager.cpp" />
     <ClCompile Include="src\gui\window\window_finder.cpp" />
     <ClCompile Include="src\gui\window\external_overlay.cpp" />
     <ClCompile Include="src\gui\window\input_forwarder.cpp" />

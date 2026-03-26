@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "helper.h"
 #include "core/core.h"
 
@@ -291,7 +291,7 @@ bool Helper::SafeGetStaticFieldInt(void* fieldHandle, int& outValue)
     if (!fieldHandle) return false;
     try
     {
-        if (Core::config->internal.unityMode == UnityResolve::Mode::Mono)
+        if (Core::context->state.unityMode == UnityResolve::Mode::Mono)
         {
             void* vTable = UR::Invoke<void*, void*, void*>("mono_class_vtable", UR::pDomain,
                 UR::Invoke<void*, void*>("mono_field_get_parent", fieldHandle));
@@ -311,7 +311,7 @@ bool Helper::SafeSetStaticFieldInt(void* fieldHandle, int value)
     if (!fieldHandle) return false;
     try
     {
-        if (Core::config->internal.unityMode == UnityResolve::Mode::Mono)
+        if (Core::context->state.unityMode == UnityResolve::Mode::Mono)
         {
             void* vTable = UR::Invoke<void*, void*, void*>("mono_class_vtable", UR::pDomain,
                 UR::Invoke<void*, void*>("mono_field_get_parent", fieldHandle));
@@ -331,7 +331,7 @@ bool Helper::SafeGetStaticFieldFloat(void* fieldHandle, float& outValue)
     if (!fieldHandle) return false;
     try
     {
-        if (Core::config->internal.unityMode == UnityResolve::Mode::Mono)
+        if (Core::context->state.unityMode == UnityResolve::Mode::Mono)
         {
             void* vTable = UR::Invoke<void*, void*, void*>("mono_class_vtable", UR::pDomain,
                 UR::Invoke<void*, void*>("mono_field_get_parent", fieldHandle));
@@ -352,7 +352,7 @@ bool Helper::SafeSetStaticFieldFloat(void* fieldHandle, float value)
     try
     {
 
-        if (Core::config->internal.unityMode == UnityResolve::Mode::Mono)
+        if (Core::context->state.unityMode == UnityResolve::Mode::Mono)
         {
             void* vTable = UR::Invoke<void*, void*, void*>("mono_class_vtable", UR::pDomain,
                 UR::Invoke<void*, void*>("mono_field_get_parent", fieldHandle));
@@ -375,7 +375,7 @@ bool Helper::SafeGetStaticFieldBool(void* fieldHandle, bool& outValue)
     if (!fieldHandle) return false;
     try
     {
-        if (Core::config->internal.unityMode == UnityResolve::Mode::Mono)
+        if (Core::context->state.unityMode == UnityResolve::Mode::Mono)
         {
             void* vTable = UR::Invoke<void*, void*, void*>("mono_class_vtable", UR::pDomain,
                 UR::Invoke<void*, void*>("mono_field_get_parent", fieldHandle));
@@ -395,7 +395,7 @@ bool Helper::SafeSetStaticFieldBool(void* fieldHandle, bool value)
     if (!fieldHandle) return false;
     try
     {
-        if (Core::config->internal.unityMode == UnityResolve::Mode::Mono)
+        if (Core::context->state.unityMode == UnityResolve::Mode::Mono)
         {
             void* vTable = UR::Invoke<void*, void*, void*>("mono_class_vtable", UR::pDomain,
                 UR::Invoke<void*, void*>("mono_field_get_parent", fieldHandle));
@@ -415,7 +415,7 @@ bool Helper::SafeGetStaticFieldDouble(void* fieldHandle, double& outValue)
     if (!fieldHandle) return false;
     try
     {
-        if (Core::config->internal.unityMode == UnityResolve::Mode::Mono)
+        if (Core::context->state.unityMode == UnityResolve::Mode::Mono)
         {
             void* vTable = UR::Invoke<void*, void*, void*>("mono_class_vtable", UR::pDomain,
                 UR::Invoke<void*, void*>("mono_field_get_parent", fieldHandle));
@@ -435,7 +435,7 @@ bool Helper::SafeSetStaticFieldDouble(void* fieldHandle, double value)
     if (!fieldHandle) return false;
     try
     {
-        if (Core::config->internal.unityMode == UnityResolve::Mode::Mono)
+        if (Core::context->state.unityMode == UnityResolve::Mode::Mono)
         {
             void* vTable = UR::Invoke<void*, void*, void*>("mono_class_vtable", UR::pDomain,
                 UR::Invoke<void*, void*>("mono_field_get_parent", fieldHandle));
@@ -455,7 +455,7 @@ bool Helper::SafeGetStaticFieldVector3(void* fieldHandle, Vec3& outValue)
     if (!fieldHandle) return false;
     try
     {
-        if (Core::config->internal.unityMode == UnityResolve::Mode::Mono)
+        if (Core::context->state.unityMode == UnityResolve::Mode::Mono)
         {
             void* vTable = UR::Invoke<void*, void*, void*>("mono_class_vtable", UR::pDomain,
                 UR::Invoke<void*, void*>("mono_field_get_parent", fieldHandle));
@@ -476,7 +476,7 @@ bool Helper::SafeSetStaticFieldVector3(void* fieldHandle, const Vec3& value)
     try
     {
         Vec3 v = value;
-        if (Core::config->internal.unityMode == UnityResolve::Mode::Mono)
+        if (Core::context->state.unityMode == UnityResolve::Mode::Mono)
         {
             void* vTable = UR::Invoke<void*, void*, void*>("mono_class_vtable", UR::pDomain,
             UR::Invoke<void*, void*>("mono_field_get_parent", fieldHandle));
@@ -497,7 +497,7 @@ bool Helper::SafeInvokeGetter(void* obj, void* methodHandle, void* outValue, int
     try
     {
         void* result;
-        if (Core::config->internal.unityMode == UnityResolve::Mode::Mono)
+        if (Core::context->state.unityMode == UnityResolve::Mode::Mono)
         {
             result = UR::Invoke<void*, void*, void*, void**, void*>("mono_runtime_invoke", methodHandle, obj, nullptr, nullptr);
         }
@@ -508,7 +508,7 @@ bool Helper::SafeInvokeGetter(void* obj, void* methodHandle, void* outValue, int
         if (result && outValue)
         {
             void* unboxed = UR::Invoke<void*, void*>(
-                Core::config->internal.unityMode == UnityResolve::Mode::Mono ? "mono_object_unbox" : "il2cpp_object_unbox", result);
+                Core::context->state.unityMode == UnityResolve::Mode::Mono ? "mono_object_unbox" : "il2cpp_object_unbox", result);
             if (unboxed)
             {
                 memcpy(outValue, unboxed, valueSize);
@@ -525,7 +525,7 @@ bool Helper::SafeInvokeSetter(void* obj, void* methodHandle, void* value)
     try
     {
         void* params[1] = { value };
-        if (Core::config->internal.unityMode == UnityResolve::Mode::Mono)
+        if (Core::context->state.unityMode == UnityResolve::Mode::Mono)
         {
             UR::Invoke<void*, void*, void*, void**, void*>("mono_runtime_invoke", methodHandle, obj, params, nullptr);
         }
@@ -545,7 +545,7 @@ void* Helper::SafeInvokeMethod(void* obj, void* methodHandle, void** params, boo
     try
     {
         void* result;
-        if (Core::config->internal.unityMode == UnityResolve::Mode::Mono)
+        if (Core::context->state.unityMode == UnityResolve::Mode::Mono)
         {
             result = UR::Invoke<void*, void*, void*, void**, void*>("mono_runtime_invoke", methodHandle, obj, params, nullptr);
         }

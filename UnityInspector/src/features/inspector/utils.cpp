@@ -1,53 +1,43 @@
 #include "pch.h"
 #include "inspector.h"
 
+#define API(fn) (mono ? "mono_" fn : "il2cpp_" fn)
+
 std::string Inspector::GetComponentFullTypeName(UT::Component* component) const
 {
 	if (!component) return "Unknown";
 
-	if (Config::state.unityMode == UnityResolve::Mode::Mono)
-	{
-		if (void* monoClass = UR::Invoke<void*, void*>("mono_object_get_class", component))
-		{
-			const char* className = UR::Invoke<const char*, void*>("mono_class_get_name", monoClass);
-			const char* nameSpace = UR::Invoke<const char*, void*>("mono_class_get_namespace", monoClass);
+	const bool mono = Config::state.unityMode == UnityResolve::Mode::Mono;
 
-			if (className)
-			{
-				std::string fullName;
-				if (nameSpace && strlen(nameSpace) > 0)
-				{
-					fullName = std::string(nameSpace) + "." + std::string(className);
-				}
-				else
-				{
-					fullName = std::string(className);
-				}
-				return fullName;
-			}
+	if (void* klass = UR::Invoke<void*, void*>(API("object_get_class"), component))
+	{
+		const char* className = UR::Invoke<const char*, void*>(API("class_get_name"), klass);
+		const char* nameSpace = UR::Invoke<const char*, void*>(API("class_get_namespace"), klass);
+
+		if (className)
+		{
+			std::string fullName;
+			if (nameSpace && strlen(nameSpace) > 0)
+				fullName = std::string(nameSpace) + "." + std::string(className);
+			else
+				fullName = std::string(className);
+			return fullName;
 		}
 	}
-	else
-	{
-		if (void* monoClass = UR::Invoke<void*, void*>("il2cpp_object_get_class", component))
-		{
-			const char* className = UR::Invoke<const char*, void*>("il2cpp_class_get_name", monoClass);
-			const char* nameSpace = UR::Invoke<const char*, void*>("il2cpp_class_get_namespace", monoClass);
 
-			if (className)
-			{
-				std::string fullName;
-				if (nameSpace && strlen(nameSpace) > 0)
-				{
-					fullName = std::string(nameSpace) + "." + std::string(className);
-				}
-				else
-				{
-					fullName = std::string(className);
-				}
-				return fullName;
-			}
-		}
+	return "Component";
+}
+
+std::string Inspector::GetComponentTypeName(UT::Component* component) const
+{
+	if (!component) return "Unknown";
+
+	const bool mono = Config::state.unityMode == UnityResolve::Mode::Mono;
+
+	if (void* klass = UR::Invoke<void*, void*>(API("object_get_class"), component))
+	{
+		if (const char* className = UR::Invoke<const char*, void*>(API("class_get_name"), klass))
+			return { className };
 	}
 
 	return "Component";
@@ -58,91 +48,46 @@ std::vector<ComponentFieldInfo> Inspector::GetComponentFields(UT::Component* com
 	std::vector<ComponentFieldInfo> fields;
 	if (!component) return fields;
 
-	if (Config::state.unityMode == UnityResolve::Mode::Mono)
+	const bool mono = Config::state.unityMode == UnityResolve::Mode::Mono;
+
+	void* klass = UR::Invoke<void*, void*>(API("object_get_class"), component);
+	if (!klass) return fields;
+
+	void* currentClass = klass;
+	while (currentClass)
 	{
-		void* monoClass = UR::Invoke<void*, void*>("mono_object_get_class", component);
-		if (!monoClass) return fields;
+		void* iter = nullptr;
+		void* field;
 
-		void* currentClass = monoClass;
-		while (currentClass)
+		while ((field = UR::Invoke<void*, void*, void*>(API("class_get_fields"), currentClass, &iter)))
 		{
-			void* iter = nullptr;
-			void* field;
+			ComponentFieldInfo info;
+			info.fieldHandle = field;
+			info.classHandle = currentClass;
 
-			while ((field = UR::Invoke<void*, void*, void*>("mono_class_get_fields", currentClass, &iter)))
+			const char* fieldName = UR::Invoke<const char*, void*>(API("field_get_name"), field);
+			info.name = fieldName ? fieldName : "(unknown)";
+
+			info.offset = UR::Invoke<int, void*>(API("field_get_offset"), field);
+
+			int flags = UR::Invoke<int, void*>(API("field_get_flags"), field);
+			info.isStatic = (flags & 0x10) != 0;
+
+			if (void* fieldType = UR::Invoke<void*, void*>(API("field_get_type"), field))
 			{
-				ComponentFieldInfo info;
-				info.fieldHandle = field;
-				info.classHandle = currentClass;
-
-				const char* fieldName = UR::Invoke<const char*, void*>("mono_field_get_name", field);
-				info.name = fieldName ? fieldName : "(unknown)";
-
-				info.offset = UR::Invoke<int, void*>("mono_field_get_offset", field);
-
-				int flags = UR::Invoke<int, void*>("mono_field_get_flags", field);
-				info.isStatic = (flags & 0x10) != 0;
-
-				if (void* fieldType = UR::Invoke<void*, void*>("mono_field_get_type", field))
-				{
-					const char* typeName = UR::Invoke<const char*, void*>("mono_type_get_name", fieldType);
-					info.typeName = typeName ? typeName : "unknown";
-				}
-				else
-				{
-					info.typeName = "unknown";
-				}
-
-				info.editableType = DetermineEditableType(info.typeName);
-
-				fields.push_back(info);
+				const char* typeName = UR::Invoke<const char*, void*>(API("type_get_name"), fieldType);
+				info.typeName = typeName ? typeName : "unknown";
+			}
+			else
+			{
+				info.typeName = "unknown";
 			}
 
-			currentClass = UR::Invoke<void*, void*>("mono_class_get_parent", currentClass);
+			info.editableType = DetermineEditableType(info.typeName);
+			fields.push_back(info);
 		}
-	}
-	else
-	{
-		void* il2cppClass = UR::Invoke<void*, void*>("il2cpp_object_get_class", component);
-		if (!il2cppClass) return fields;
 
-		void* currentClass = il2cppClass;
-		while (currentClass)
-		{
-			void* iter = nullptr;
-			void* field;
-
-			while ((field = UR::Invoke<void*, void*, void*>("il2cpp_class_get_fields", currentClass, &iter)))
-			{
-				ComponentFieldInfo info;
-				info.fieldHandle = field;
-				info.classHandle = currentClass;
-
-				const char* fieldName = UR::Invoke<const char*, void*>("il2cpp_field_get_name", field);
-				info.name = fieldName ? fieldName : "(unknown)";
-
-				info.offset = UR::Invoke<int, void*>("il2cpp_field_get_offset", field);
-
-				int flags = UR::Invoke<int, void*>("il2cpp_field_get_flags", field);
-				info.isStatic = (flags & 0x10) != 0;
-
-				if (void* fieldType = UR::Invoke<void*, void*>("il2cpp_field_get_type", field))
-				{
-					const char* typeName = UR::Invoke<const char*, void*>("il2cpp_type_get_name", fieldType);
-					info.typeName = typeName ? typeName : "unknown";
-				}
-				else
-				{
-					info.typeName = "unknown";
-				}
-
-				info.editableType = DetermineEditableType(info.typeName);
-
-				fields.push_back(info);
-			}
-
-			currentClass = UR::Invoke<void*, void*>("il2cpp_class_get_parent", currentClass);
-		}
+		currentClass = UR::Invoke<void*, void*>(API("class_get_parent"), currentClass);
 	}
 
 	return fields;
@@ -153,86 +98,54 @@ std::vector<ComponentPropertyInfo> Inspector::GetComponentProperties(UT::Compone
 	std::vector<ComponentPropertyInfo> properties;
 	if (!component) return properties;
 
-	if (Config::state.unityMode == UnityResolve::Mode::Mono)
+	const bool mono = Config::state.unityMode == UnityResolve::Mode::Mono;
+
+	void* klass = UR::Invoke<void*, void*>(API("object_get_class"), component);
+	if (!klass) return properties;
+
+	void* currentClass = klass;
+	while (currentClass)
 	{
-		void* monoClass = UR::Invoke<void*, void*>("mono_object_get_class", component);
-		if (!monoClass) return properties;
+		void* iter = nullptr;
+		void* prop;
 
-		void* currentClass = monoClass;
-		while (currentClass)
+		while ((prop = UR::Invoke<void*, void*, void*>(API("class_get_properties"), currentClass, &iter)))
 		{
-			void* iter = nullptr;
-			void* prop;
+			ComponentPropertyInfo info;
 
-			while ((prop = UR::Invoke<void*, void*, void*>("mono_class_get_properties", currentClass, &iter)))
+			const char* propName = UR::Invoke<const char*, void*>(API("property_get_name"), prop);
+			info.name = propName ? propName : "(unknown)";
+
+			info.getterHandle = UR::Invoke<void*, void*>(API("property_get_get_method"), prop);
+			info.setterHandle = UR::Invoke<void*, void*>(API("property_get_set_method"), prop);
+			info.canRead = info.getterHandle != nullptr;
+			info.canWrite = info.setterHandle != nullptr;
+
+			if (mono && info.getterHandle)
 			{
-				ComponentPropertyInfo info;
-
-				const char* propName = UR::Invoke<const char*, void*>("mono_property_get_name", prop);
-				info.name = propName ? propName : "(unknown)";
-
-				info.getterHandle = UR::Invoke<void*, void*>("mono_property_get_get_method", prop);
-				info.setterHandle = UR::Invoke<void*, void*>("mono_property_get_set_method", prop);
-				info.canRead = info.getterHandle != nullptr;
-				info.canWrite = info.setterHandle != nullptr;
-
-				if (info.getterHandle)
+				if (void* sig = UR::Invoke<void*, void*>("mono_method_signature", info.getterHandle))
 				{
-					if (void* sig = UR::Invoke<void*, void*>("mono_method_signature", info.getterHandle))
+					if (void* retType = UR::Invoke<void*, void*>("mono_signature_get_return_type", sig))
 					{
-						if (void* retType = UR::Invoke<void*, void*>("mono_signature_get_return_type", sig))
-						{
-							const char* typeName = UR::Invoke<const char*, void*>("mono_type_get_name", retType);
-							info.typeName = typeName ? typeName : "unknown";
-						}
-					}
-				}
-
-				info.editableType = DetermineEditableType(info.typeName);
-				properties.push_back(info);
-			}
-
-			currentClass = UR::Invoke<void*, void*>("mono_class_get_parent", currentClass);
-		}
-	}
-	else
-	{
-		void* il2cppClass = UR::Invoke<void*, void*>("il2cpp_object_get_class", component);
-		if (!il2cppClass) return properties;
-
-		void* currentClass = il2cppClass;
-		while (currentClass)
-		{
-			void* iter = nullptr;
-			void* prop;
-
-			while ((prop = UR::Invoke<void*, void*, void*>("il2cpp_class_get_properties", currentClass, &iter)))
-			{
-				ComponentPropertyInfo info;
-
-				const char* propName = UR::Invoke<const char*, void*>("il2cpp_property_get_name", prop);
-				info.name = propName ? propName : "(unknown)";
-
-				info.getterHandle = UR::Invoke<void*, void*>("il2cpp_property_get_get_method", prop);
-				info.setterHandle = UR::Invoke<void*, void*>("il2cpp_property_get_set_method", prop);
-				info.canRead = info.getterHandle != nullptr;
-				info.canWrite = info.setterHandle != nullptr;
-
-				if (info.getterHandle)
-				{
-					if (void* retType = UR::Invoke<void*, void*>("il2cpp_method_get_return_type", info.getterHandle))
-					{
-						const char* typeName = UR::Invoke<const char*, void*>("il2cpp_type_get_name", retType);
+						const char* typeName = UR::Invoke<const char*, void*>("mono_type_get_name", retType);
 						info.typeName = typeName ? typeName : "unknown";
 					}
 				}
-
-				info.editableType = DetermineEditableType(info.typeName);
-				properties.push_back(info);
+			}
+			else if (info.getterHandle)
+			{
+				if (void* retType = UR::Invoke<void*, void*>("il2cpp_method_get_return_type", info.getterHandle))
+				{
+					const char* typeName = UR::Invoke<const char*, void*>("il2cpp_type_get_name", retType);
+					info.typeName = typeName ? typeName : "unknown";
+				}
 			}
 
-			currentClass = UR::Invoke<void*, void*>("il2cpp_class_get_parent", currentClass);
+			info.editableType = DetermineEditableType(info.typeName);
+			properties.push_back(info);
 		}
+
+		currentClass = UR::Invoke<void*, void*>(API("class_get_parent"), currentClass);
 	}
 
 	return properties;
@@ -243,27 +156,34 @@ std::vector<ComponentMethodInfo> Inspector::GetComponentMethods(UT::Component* c
 	std::vector<ComponentMethodInfo> methods;
 	if (!component) return methods;
 
-	if (Config::state.unityMode == UnityResolve::Mode::Mono)
+	const bool mono = Config::state.unityMode == UnityResolve::Mode::Mono;
+
+	void* klass = UR::Invoke<void*, void*>(API("object_get_class"), component);
+	if (!klass) return methods;
+
+	void* currentClass = klass;
+	while (currentClass)
 	{
-		void* monoClass = UR::Invoke<void*, void*>("mono_object_get_class", component);
-		if (!monoClass) return methods;
+		void* iter = nullptr;
+		void* method;
 
-		void* currentClass = monoClass;
-		while (currentClass)
+		while ((method = UR::Invoke<void*, void*, void*>(API("class_get_methods"), currentClass, &iter)))
 		{
-			void* iter = nullptr;
-			void* method;
+			ComponentMethodInfo info;
+			info.methodHandle = method;
 
-			while ((method = UR::Invoke<void*, void*, void*>("mono_class_get_methods", currentClass, &iter)))
+			const char* methodName = UR::Invoke<const char*, void*>(API("method_get_name"), method);
+			info.name = methodName ? methodName : "(unknown)";
+
+			int fFlags = 0;
+			info.flags = UR::Invoke<int, void*, int*>(API("method_get_flags"), method, &fFlags);
+			info.isStatic = (info.flags & 0x10) != 0;
+			info.isVirtual = (info.flags & 0x40) != 0;
+
+			if (mono)
 			{
 				const auto signature = UR::Invoke<void*, void*>("mono_method_signature", method);
 				if (!signature) continue;
-
-				ComponentMethodInfo info;
-				info.methodHandle = method;
-
-				const char* methodName = UR::Invoke<const char*, void*>("mono_method_get_name", method);
-				info.name = methodName ? methodName : "(unknown)";
 
 				if (void* returnType = UR::Invoke<void*, void*>("mono_signature_get_return_type", signature))
 				{
@@ -274,11 +194,6 @@ std::vector<ComponentMethodInfo> Inspector::GetComponentMethods(UT::Component* c
 				{
 					info.returnTypeName = "void";
 				}
-
-				int fFlags = 0;
-				info.flags = UR::Invoke<int, void*, int*>("mono_method_get_flags", method, &fFlags);
-				info.isStatic = (info.flags & 0x10) != 0;
-				info.isVirtual = (info.flags & 0x40) != 0;
 
 				int paramCount = UR::Invoke<int, void*>("mono_signature_get_param_count", signature);
 				if (paramCount > 0)
@@ -300,32 +215,9 @@ std::vector<ComponentMethodInfo> Inspector::GetComponentMethods(UT::Component* c
 						paramIndex++;
 					}
 				}
-
-				methods.push_back(std::move(info));
 			}
-
-			currentClass = UR::Invoke<void*, void*>("mono_class_get_parent", currentClass);
-		}
-	}
-	else
-	{
-		void* il2cppClass = UR::Invoke<void*, void*>("il2cpp_object_get_class", component);
-		if (!il2cppClass) return methods;
-
-		void* currentClass = il2cppClass;
-		while (currentClass)
-		{
-			void* iter = nullptr;
-			void* method;
-
-			while ((method = UR::Invoke<void*, void*, void*>("il2cpp_class_get_methods", currentClass, &iter)))
+			else
 			{
-				ComponentMethodInfo info;
-				info.methodHandle = method;
-
-				const char* methodName = UR::Invoke<const char*, void*>("il2cpp_method_get_name", method);
-				info.name = methodName ? methodName : "(unknown)";
-
 				if (void* returnType = UR::Invoke<void*, void*>("il2cpp_method_get_return_type", method))
 				{
 					const char* typeName = UR::Invoke<const char*, void*>("il2cpp_type_get_name", returnType);
@@ -335,11 +227,6 @@ std::vector<ComponentMethodInfo> Inspector::GetComponentMethods(UT::Component* c
 				{
 					info.returnTypeName = "void";
 				}
-
-				int fFlags = 0;
-				info.flags = UR::Invoke<int, void*, int*>("il2cpp_method_get_flags", method, &fFlags);
-				info.isStatic = (info.flags & 0x10) != 0;
-				info.isVirtual = (info.flags & 0x40) != 0;
 
 				int paramCount = UR::Invoke<int, void*>("il2cpp_method_get_param_count", method);
 				for (int i = 0; i < paramCount; i++)
@@ -355,44 +242,18 @@ std::vector<ComponentMethodInfo> Inspector::GetComponentMethods(UT::Component* c
 					);
 					info.parameterEditableTypes.push_back(DetermineEditableType(typeName));
 				}
-
-				methods.push_back(std::move(info));
 			}
 
-			currentClass = UR::Invoke<void*, void*>("il2cpp_class_get_parent", currentClass);
+			methods.push_back(std::move(info));
 		}
+
+		currentClass = UR::Invoke<void*, void*>(API("class_get_parent"), currentClass);
 	}
 
 	return methods;
 }
 
-std::string Inspector::GetComponentTypeName(UT::Component* component) const
-{
-	if (!component) return "Unknown";
-
-	if (Config::state.unityMode == UnityResolve::Mode::Mono)
-	{
-		if (void* monoClass = UR::Invoke<void*, void*>("mono_object_get_class", component))
-		{
-			if (const char* className = UR::Invoke<const char*, void*>("mono_class_get_name", monoClass))
-			{
-				return { className };
-			}
-		}
-	}
-	else
-	{
-		if (void* il2cppClass = UR::Invoke<void*, void*>("il2cpp_object_get_class", component))
-		{
-			if (const char* className = UR::Invoke<const char*, void*>("il2cpp_class_get_name", il2cppClass))
-			{
-				return {className};
-			}
-		}
-	}
-
-	return "Component";
-}
+#undef API
 
 void* Inspector::InvokeMethod(UT::Component* component, const ComponentMethodInfo& method, const std::vector<std::string>& paramValues) const
 {
@@ -566,7 +427,6 @@ void Inspector::RefreshTabData(InspectedObjectTab& tab) const
 
 		for (auto& comp : components)
 		{
-
 			if (comp && Helper::SafeIsAlive(comp))
 			{
 				tab.cachedComponents.push_back(comp);
@@ -575,7 +435,6 @@ void Inspector::RefreshTabData(InspectedObjectTab& tab) const
 				tab.cachedComponentProperties.push_back(GetComponentProperties(comp));
 				tab.cachedComponentMethods.push_back(GetComponentMethods(comp));
 			}
-
 		}
 	}
 }
@@ -669,9 +528,7 @@ void Inspector::OpenObjectInNewTab(UT::GameObject* obj)
 	}
 
 	if (openTabs.size() >= maxTabs)
-	{
 		return;
-	}
 
 	InspectedObjectTab newTab;
 	newTab.gameObject = obj;

@@ -86,8 +86,8 @@ void Inspector::RenderHierarchyNode(HierarchyNode& node, const int depth)
 	const bool isSelected = (FindTabForObject(node.gameObject) >= 0);
 
 	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
-	                           ImGuiTreeNodeFlags_SpanAvailWidth |
-	                           ImGuiTreeNodeFlags_FramePadding;
+		ImGuiTreeNodeFlags_SpanAvailWidth |
+		ImGuiTreeNodeFlags_FramePadding;
 
 	if (!hasChildren) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 	if (isSelected) flags |= ImGuiTreeNodeFlags_Selected;

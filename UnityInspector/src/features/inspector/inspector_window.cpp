@@ -1,14 +1,38 @@
 #include "pch.h"
 #include "inspector.h"
+#include <cmath>
 
-static bool DragFloatLabel(const char* label, float* value, float width = 40.0f, float speed = 0.1f)
+static void QuaternionToEuler(float x, float y, float z, float w, float outEuler[3])
 {
-	ImGui::PushItemWidth(width);
-	ImGui::Text("%s", label);
-	ImGui::SameLine();
-	bool changed = ImGui::DragFloat(("##" + std::string(label)).c_str(), value, speed);
-	ImGui::PopItemWidth();
-	return changed;
+	float sinr = 2.0f * (w * x + y * z);
+	float cosr = 1.0f - 2.0f * (x * x + y * y);
+	outEuler[0] = atan2f(sinr, cosr) * (180.0f / 3.14159265f);
+
+	float sinp = 2.0f * (w * y - z * x);
+	if (fabsf(sinp) >= 1.0f)
+		outEuler[1] = copysignf(90.0f, sinp);
+	else
+		outEuler[1] = asinf(sinp) * (180.0f / 3.14159265f);
+
+	float siny = 2.0f * (w * z + x * y);
+	float cosy = 1.0f - 2.0f * (y * y + z * z);
+	outEuler[2] = atan2f(siny, cosy) * (180.0f / 3.14159265f);
+}
+
+static void EulerToQuaternion(float rollDeg, float pitchDeg, float yawDeg, float outQ[4])
+{
+	float r = rollDeg * (3.14159265f / 360.0f);
+	float p = pitchDeg * (3.14159265f / 360.0f);
+	float y = yawDeg * (3.14159265f / 360.0f);
+
+	float cr = cosf(r), sr = sinf(r);
+	float cp = cosf(p), sp = sinf(p);
+	float cy = cosf(y), sy = sinf(y);
+
+	outQ[0] = sr * cp * cy - cr * sp * sy;
+	outQ[1] = cr * sp * cy + sr * cp * sy;
+	outQ[2] = cr * cp * sy - sr * sp * cy;
+	outQ[3] = cr * cp * cy + sr * sp * sy;
 }
 
 static bool DragVector3Compact(const char* id, float* values, float speed = 0.1f)
@@ -83,6 +107,20 @@ static bool DragVector4Compact(const char* id, float* values, float speed = 0.01
 
 	ImGui::PopID();
 	return changed;
+}
+
+static void SectionLabel(const char* text, size_t count)
+{
+	if (count > 0)
+		ImGui::TextDisabled("%s (%zu)", text, count);
+	else
+		ImGui::TextDisabled("%s", text);
+}
+
+static std::string Truncate(const std::string& s, size_t maxLen)
+{
+	if (s.length() <= maxLen) return s;
+	return s.substr(0, maxLen - 3) + "...";
 }
 
 void Inspector::RenderEditableField(UT::Component* component, const ComponentFieldInfo& field) const
@@ -480,88 +518,258 @@ void Inspector::RenderTransformSection(UT::Transform* transform, InspectedObject
 {
 	if (!transform) return;
 
+	if (!ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
+		return;
 
-	bool open = ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen);
+	ImGui::Indent(10.0f);
 
-	if (open)
+	ImVec4 activeBtnCol = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
+	ImVec4 inactiveBtnCol = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+
+	ImGui::PushStyleColor(ImGuiCol_Button, tab.showWorldTransform ? activeBtnCol : inactiveBtnCol);
+	if (ImGui::SmallButton("World")) tab.showWorldTransform = !tab.showWorldTransform;
+	ImGui::PopStyleColor();
+
+	ImGui::SameLine();
+	ImGui::PushStyleColor(ImGuiCol_Button, tab.showLocalTransform ? activeBtnCol : inactiveBtnCol);
+	if (ImGui::SmallButton("Local")) tab.showLocalTransform = !tab.showLocalTransform;
+	ImGui::PopStyleColor();
+
+	const float availWidth = ImGui::GetContentRegionAvail().x;
+	const bool showBoth = tab.showWorldTransform && tab.showLocalTransform;
+	const float childWidth = showBoth ? (availWidth - 10.0f) * 0.5f : availWidth;
+
+	if (tab.showWorldTransform)
 	{
-		ImGui::Indent(10.0f);
+		if (showBoth)
+			ImGui::BeginChild("WorldTransform", ImVec2(childWidth, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Border);
 
-		if (ImGui::Button("World", ImVec2(60, 0))) tab.showWorldTransform = !tab.showWorldTransform;
+		ImGui::TextDisabled("World Position");
+		const auto pos = transform->GetPosition();
+		float posArr[3] = { pos.x, pos.y, pos.z };
+		if (DragVector3Compact("WorldPos", posArr, 0.1f))
+			transform->SetPosition({ posArr[0], posArr[1], posArr[2] });
 
-		ImGui::SameLine();
-		if (ImGui::Button("Local", ImVec2(60, 0))) tab.showLocalTransform = !tab.showLocalTransform;
-
-		const float availWidth = ImGui::GetContentRegionAvail().x;
-		const bool showBoth = tab.showWorldTransform && tab.showLocalTransform;
-		const float childWidth = showBoth ? (availWidth - 10.0f) * 0.5f : availWidth;
-
-		if (tab.showWorldTransform)
+		ImGui::Spacing();
+		ImGui::TextDisabled("World Rotation (Euler)");
+		const auto rot = transform->GetRotation();
+		float euler[3];
+		QuaternionToEuler(rot.x, rot.y, rot.z, rot.w, euler);
+		if (DragVector3Compact("WorldEuler", euler, 0.5f))
 		{
-			if (showBoth)
-			{
-				ImGui::BeginChild("WorldTransform", ImVec2(childWidth, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Border);
-			}
-
-			ImGui::TextDisabled("World Position");
-			const auto pos = transform->GetPosition();
-			float posArr[3] = { pos.x, pos.y, pos.z };
-			if (DragVector3Compact("WorldPos", posArr, 0.1f))
-				transform->SetPosition({ posArr[0], posArr[1], posArr[2] });
-
-			ImGui::Spacing();
-			ImGui::TextDisabled("World Rotation");
-			const auto rot = transform->GetRotation();
-			float rotArr[4] = { rot.x, rot.y, rot.z, rot.w };
-			if (DragVector4Compact("WorldRot", rotArr, 0.01f))
-				transform->SetRotation({ rotArr[0], rotArr[1], rotArr[2], rotArr[3] });
-
-			if (showBoth)
-			{
-				ImGui::EndChild();
-			}
+			float q[4];
+			EulerToQuaternion(euler[0], euler[1], euler[2], q);
+			transform->SetRotation({ q[0], q[1], q[2], q[3] });
 		}
 
 		if (showBoth)
-		{
-			ImGui::SameLine();
-		}
+			ImGui::EndChild();
+	}
 
-		if (tab.showLocalTransform)
-		{
-			if (showBoth)
-			{
-				ImGui::BeginChild("LocalTransform", ImVec2(childWidth, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Border);
-			}
+	if (showBoth)
+		ImGui::SameLine();
 
-			ImGui::TextDisabled("Local Position");
-			const auto localPos = transform->GetLocalPosition();
-			float localPosArr[3] = { localPos.x, localPos.y, localPos.z };
-			if (DragVector3Compact("LocalPos", localPosArr, 0.1f))
-				transform->SetLocalPosition({ localPosArr[0], localPosArr[1], localPosArr[2] });
+	if (tab.showLocalTransform)
+	{
+		if (showBoth)
+			ImGui::BeginChild("LocalTransform", ImVec2(childWidth, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Border);
 
-			ImGui::Spacing();
-			ImGui::TextDisabled("Local Rotation");
-			const auto localRot = transform->GetLocalRotation();
-			float localRotArr[4] = { localRot.x, localRot.y, localRot.z, localRot.w };
-			if (DragVector4Compact("LocalRot", localRotArr, 0.01f))
-				transform->SetLocalRotation({ localRotArr[0], localRotArr[1], localRotArr[2], localRotArr[3] });
+		ImGui::TextDisabled("Local Position");
+		const auto localPos = transform->GetLocalPosition();
+		float localPosArr[3] = { localPos.x, localPos.y, localPos.z };
+		if (DragVector3Compact("LocalPos", localPosArr, 0.1f))
+			transform->SetLocalPosition({ localPosArr[0], localPosArr[1], localPosArr[2] });
 
-			ImGui::Spacing();
-			ImGui::TextDisabled("Local Scale");
-			const auto scale = transform->GetLocalScale();
-			float scaleArr[3] = { scale.x, scale.y, scale.z };
-			if (DragVector3Compact("LocalScale", scaleArr, 0.1f))
-				transform->SetLocalScale({ scaleArr[0], scaleArr[1], scaleArr[2] });
-
-			if (showBoth)
-			{
-				ImGui::EndChild();
-			}
-		}
-
-		ImGui::Unindent(10.0f);
 		ImGui::Spacing();
+		ImGui::TextDisabled("Local Rotation (Euler)");
+		const auto localRot = transform->GetLocalRotation();
+		float localEuler[3];
+		QuaternionToEuler(localRot.x, localRot.y, localRot.z, localRot.w, localEuler);
+		if (DragVector3Compact("LocalEuler", localEuler, 0.5f))
+		{
+			float q[4];
+			EulerToQuaternion(localEuler[0], localEuler[1], localEuler[2], q);
+			transform->SetLocalRotation({ q[0], q[1], q[2], q[3] });
+		}
+
+		ImGui::Spacing();
+		ImGui::TextDisabled("Local Scale");
+		const auto scale = transform->GetLocalScale();
+		float scaleArr[3] = { scale.x, scale.y, scale.z };
+		if (DragVector3Compact("LocalScale", scaleArr, 0.1f))
+			transform->SetLocalScale({ scaleArr[0], scaleArr[1], scaleArr[2] });
+
+		if (showBoth)
+			ImGui::EndChild();
+	}
+
+	ImGui::Unindent(10.0f);
+	ImGui::Spacing();
+}
+
+void Inspector::RenderFieldsSection(UT::Component* component, const std::vector<ComponentFieldInfo>& fields, InspectedObjectTab& tab, const size_t componentIndex) const
+{
+	if (fields.empty())
+	{
+		ImGui::TextDisabled("No accessible fields");
+		return;
+	}
+
+	if (componentIndex >= tab.fieldSearchBuffers.size())
+		tab.fieldSearchBuffers.resize(componentIndex + 1);
+	char* searchBuffer = tab.fieldSearchBuffers[componentIndex].data();
+
+	ImGui::PushItemWidth(-180);
+	ImGui::InputTextWithHint("##FieldSearch", "Search fields...", searchBuffer, 256);
+	ImGui::PopItemWidth();
+
+	ImGui::SameLine();
+	ImGui::Checkbox("Editable", &tab.filterEditableOnly);
+	ImGui::SameLine();
+	ImGui::Checkbox("Static", &tab.filterStaticOnly);
+	ImGui::SameLine();
+	ImGui::Checkbox("Instance", &tab.filterInstanceOnly);
+
+	ImGui::Spacing();
+
+	std::vector<const ComponentFieldInfo*> filteredFields;
+	for (const auto& field : fields)
+	{
+		if (PassesFieldFilter(field, searchBuffer, tab.filterEditableOnly, tab.filterStaticOnly, tab.filterInstanceOnly))
+			filteredFields.push_back(&field);
+	}
+
+	if (filteredFields.empty())
+	{
+		ImGui::TextDisabled("No fields match filters");
+		return;
+	}
+
+	SectionLabel("Fields", filteredFields.size());
+	ImGui::Spacing();
+
+	if (ImGui::BeginTable("FieldsTable", 3,
+		ImGuiTableFlags_Resizable |
+		ImGuiTableFlags_BordersInnerV |
+		ImGuiTableFlags_SizingFixedFit |
+		ImGuiTableFlags_RowBg |
+		ImGuiTableFlags_Sortable))
+	{
+		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+		ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 140.0f);
+		ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableHeadersRow();
+
+		for (const auto* field : filteredFields)
+		{
+			ImGui::TableNextRow();
+
+			ImGui::TableSetColumnIndex(0);
+			if (field->isStatic)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.7f, 1.0f, 1.0f));
+				ImGui::Text("[S] %s", field->name.c_str());
+				ImGui::PopStyleColor();
+			}
+			else
+			{
+				ImGui::TextUnformatted(field->name.c_str());
+			}
+
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::BeginTooltip();
+				ImGui::Text("%s", field->name.c_str());
+				ImGui::TextDisabled("Type: %s", field->typeName.c_str());
+				if (!field->isStatic)
+					ImGui::TextDisabled("Offset: 0x%X", field->offset);
+				if (field->editableType != EditableType::None)
+					ImGui::TextDisabled("Editable");
+				else
+					ImGui::TextDisabled("Not editable");
+				ImGui::EndTooltip();
+			}
+
+			ImGui::TableSetColumnIndex(1);
+			ImGui::TextUnformatted(Truncate(field->typeName, 35).c_str());
+
+			ImGui::TableSetColumnIndex(2);
+			RenderEditableField(component, *field);
+		}
+
+		ImGui::EndTable();
+	}
+}
+
+void Inspector::RenderPropertiesSection(UT::Component* component, const std::vector<ComponentPropertyInfo>& properties, InspectedObjectTab& tab, const size_t componentIndex) const
+{
+	if (properties.empty())
+	{
+		ImGui::TextDisabled("No accessible properties");
+		return;
+	}
+
+	if (componentIndex >= tab.propertySearchBuffers.size())
+		tab.propertySearchBuffers.resize(componentIndex + 1);
+	char* searchBuffer = tab.propertySearchBuffers[componentIndex].data();
+
+	ImGui::PushItemWidth(-100);
+	ImGui::InputTextWithHint("##PropertySearch", "Search properties...", searchBuffer, 256);
+	ImGui::PopItemWidth();
+
+	ImGui::SameLine();
+	ImGui::Checkbox("Writable", &tab.filterEditableOnly);
+
+	ImGui::Spacing();
+
+	std::vector<const ComponentPropertyInfo*> filteredProps;
+	for (const auto& prop : properties)
+	{
+		if (PassesPropertyFilter(prop, searchBuffer, tab.filterEditableOnly))
+			filteredProps.push_back(&prop);
+	}
+
+	if (filteredProps.empty())
+	{
+		ImGui::TextDisabled("No properties match filters");
+		return;
+	}
+
+	SectionLabel("Properties", filteredProps.size());
+	ImGui::Spacing();
+
+	if (ImGui::BeginTable("PropertiesTable", 3,
+		ImGuiTableFlags_Resizable |
+		ImGuiTableFlags_BordersInnerV |
+		ImGuiTableFlags_SizingFixedFit |
+		ImGuiTableFlags_RowBg |
+		ImGuiTableFlags_Sortable))
+	{
+		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+		ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+		ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableHeadersRow();
+
+		for (const auto* prop : filteredProps)
+		{
+			ImGui::TableNextRow();
+
+			ImGui::TableSetColumnIndex(0);
+			const char* accessTag = prop->canRead && prop->canWrite ? "[RW]" : (prop->canRead ? "[R]" : "[W]");
+			if (!prop->canWrite)
+				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
+			ImGui::Text("%s %s", accessTag, prop->name.c_str());
+			if (!prop->canWrite)
+				ImGui::PopStyleColor();
+
+			ImGui::TableSetColumnIndex(1);
+			ImGui::TextUnformatted(Truncate(prop->typeName, 30).c_str());
+
+			ImGui::TableSetColumnIndex(2);
+			RenderEditableProperty(component, *prop);
+		}
+
+		ImGui::EndTable();
 	}
 }
 
@@ -577,16 +785,15 @@ void Inspector::RenderMethodsSection(UT::Component* component, const std::vector
 		tab.methodSearchBuffers.resize(componentIndex + 1);
 	char* searchBuffer = tab.methodSearchBuffers[componentIndex].data();
 
-	ImGui::SetNextItemWidth(150);
-	ImGui::InputTextWithHint("##MethodSearch", "Search...", searchBuffer, 256);
+	ImGui::PushItemWidth(-150);
+	ImGui::InputTextWithHint("##MethodSearch", "Search methods...", searchBuffer, 256);
+	ImGui::PopItemWidth();
 
 	ImGui::SameLine();
 	ImGui::Checkbox("Static", &tab.filterStaticOnly);
 	ImGui::SameLine();
 	ImGui::Checkbox("Instance", &tab.filterInstanceOnly);
 
-	ImGui::Spacing();
-	ImGui::Separator();
 	ImGui::Spacing();
 
 	std::vector<const ComponentMethodInfo*> filteredMethods;
@@ -602,19 +809,20 @@ void Inspector::RenderMethodsSection(UT::Component* component, const std::vector
 		return;
 	}
 
-	ImGui::TextDisabled("Showing %zu of %zu methods", filteredMethods.size(), methods.size());
+	SectionLabel("Methods", filteredMethods.size());
 	ImGui::Spacing();
 
-	if (ImGui::BeginTable("MethodsTable", 4, 
-		ImGuiTableFlags_Resizable | 
-		ImGuiTableFlags_BordersInnerV | 
+	if (ImGui::BeginTable("MethodsTable", 3,
+		ImGuiTableFlags_Resizable |
+		ImGuiTableFlags_BordersInnerV |
 		ImGuiTableFlags_SizingFixedFit |
-		ImGuiTableFlags_RowBg))
+		ImGuiTableFlags_RowBg |
+		ImGuiTableFlags_Sortable))
 	{
-		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 140.0f);
-		ImGui::TableSetupColumn("Return", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-		ImGui::TableSetupColumn("Params", ImGuiTableColumnFlags_WidthStretch);
-		ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 50.0f);
+		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 160.0f);
+		ImGui::TableSetupColumn("Signature", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 55.0f);
+		ImGui::TableHeadersRow();
 
 		for (const auto* method : filteredMethods)
 		{
@@ -623,40 +831,35 @@ void Inspector::RenderMethodsSection(UT::Component* component, const std::vector
 
 			if (method->isStatic)
 			{
+				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.7f, 1.0f, 1.0f));
 				ImGui::Text("[S] %s", method->name.c_str());
+				ImGui::PopStyleColor();
 			}
 			else if (method->isVirtual)
 			{
+				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.5f, 1.0f, 1.0f));
 				ImGui::Text("[V] %s", method->name.c_str());
+				ImGui::PopStyleColor();
 			}
 			else
 			{
-				ImGui::Text("%s", method->name.c_str());
+				ImGui::TextUnformatted(method->name.c_str());
 			}
 
 			ImGui::TableSetColumnIndex(1);
-			std::string retType = method->returnTypeName;
-			if (retType.length() > 25) retType = retType.substr(0, 22) + "...";
-			ImGui::Text("-> %s", retType.c_str());
-
-			ImGui::TableSetColumnIndex(2);
+			std::string sig;
 			if (!method->parameters.empty())
 			{
-				std::string params;
-				for (const auto& [paramName, paramType] : method->parameters)
+				for (size_t i = 0; i < method->parameters.size(); i++)
 				{
-					if (!params.empty()) params += ", ";
-					params += paramType;
+					if (i > 0) sig += ", ";
+					sig += Truncate(method->parameters[i].second, 20);
 				}
-				if (params.length() > 40) params = params.substr(0, 37) + "...";
-				ImGui::TextDisabled("(%s)", params.c_str());
 			}
-			else
-			{
-				ImGui::TextDisabled("()");
-			}
+			sig += " -> " + Truncate(method->returnTypeName, 20);
+			ImGui::TextDisabled("(%s)", sig.c_str());
 
-			ImGui::TableSetColumnIndex(3);
+			ImGui::TableSetColumnIndex(2);
 			ImGui::PushID(method);
 
 			bool canInvoke = true;
@@ -694,171 +897,11 @@ void Inspector::RenderMethodsSection(UT::Component* component, const std::vector
 	}
 }
 
-void Inspector::RenderPropertiesSection(UT::Component* component, const std::vector<ComponentPropertyInfo>& properties, InspectedObjectTab& tab, const size_t componentIndex) const
-{
-	if (properties.empty())
-	{
-		ImGui::TextDisabled("No accessible properties");
-		return;
-	}
-
-	if (componentIndex >= tab.propertySearchBuffers.size())
-		tab.propertySearchBuffers.resize(componentIndex + 1);
-	char* searchBuffer = tab.propertySearchBuffers[componentIndex].data();
-
-	ImGui::SetNextItemWidth(150);
-	ImGui::InputTextWithHint("##PropertySearch", "Search...", searchBuffer, 256);
-
-	ImGui::SameLine();
-	ImGui::Checkbox("Writable", &tab.filterEditableOnly);
-
-	ImGui::Spacing();
-	ImGui::Separator();
-	ImGui::Spacing();
-
-	std::vector<const ComponentPropertyInfo*> filteredProps;
-	for (const auto& prop : properties)
-	{
-		if (PassesPropertyFilter(prop, searchBuffer, tab.filterEditableOnly))
-			filteredProps.push_back(&prop);
-	}
-
-	if (filteredProps.empty())
-	{
-		ImGui::TextDisabled("No properties match filters");
-		return;
-	}
-
-	ImGui::TextDisabled("Showing %zu of %zu properties", filteredProps.size(), properties.size());
-	ImGui::Spacing();
-
-	if (ImGui::BeginTable("PropertiesTable", 3,
-		ImGuiTableFlags_Resizable |
-		ImGuiTableFlags_BordersInnerV |
-		ImGuiTableFlags_SizingFixedFit |
-		ImGuiTableFlags_RowBg))
-	{
-		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 140.0f);
-		ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-		ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
-
-		for (const auto* prop : filteredProps)
-		{
-			ImGui::TableNextRow();
-
-			ImGui::TableSetColumnIndex(0);
-			ImGui::Text("%s", prop->name.c_str());
-
-			ImGui::TableSetColumnIndex(1);
-			std::string typeName = prop->typeName;
-			if (typeName.length() > 30) typeName = typeName.substr(0, 27) + "...";
-			ImGui::Text("%s %s", 
-				prop->canRead && prop->canWrite ? "[RW]" : (prop->canRead ? "[R]" : "[W]"),
-				typeName.c_str());
-
-			ImGui::TableSetColumnIndex(2);
-			RenderEditableProperty(component, *prop);
-		}
-
-		ImGui::EndTable();
-	}
-}
-
-void Inspector::RenderFieldsSection(UT::Component* component, const std::vector<ComponentFieldInfo>& fields, InspectedObjectTab& tab, const size_t componentIndex) const
-{
-	if (fields.empty())
-	{
-		ImGui::TextDisabled("No accessible fields");
-		return;
-	}
-
-	if (componentIndex >= tab.fieldSearchBuffers.size())
-		tab.fieldSearchBuffers.resize(componentIndex + 1);
-	char* searchBuffer = tab.fieldSearchBuffers[componentIndex].data();
-
-	ImGui::SetNextItemWidth(120);
-	ImGui::InputTextWithHint("##FieldSearch", "Search...", searchBuffer, 256);
-
-	ImGui::SameLine();
-	ImGui::Checkbox("Editable", &tab.filterEditableOnly);
-	ImGui::SameLine();
-	ImGui::Checkbox("Static", &tab.filterStaticOnly);
-	ImGui::SameLine();
-	ImGui::Checkbox("Instance", &tab.filterInstanceOnly);
-
-	ImGui::Spacing();
-	ImGui::Separator();
-	ImGui::Spacing();
-
-	std::vector<const ComponentFieldInfo*> filteredFields;
-	for (const auto& field : fields)
-	{
-		if (PassesFieldFilter(field, searchBuffer, tab.filterEditableOnly, tab.filterStaticOnly, tab.filterInstanceOnly))
-			filteredFields.push_back(&field);
-	}
-
-	if (filteredFields.empty())
-	{
-		ImGui::TextDisabled("No fields match filters");
-		return;
-	}
-
-	ImGui::TextDisabled("Showing %zu of %zu fields", filteredFields.size(), fields.size());
-	ImGui::Spacing();
-
-	if (ImGui::BeginTable("FieldsTable", 5,
-		ImGuiTableFlags_Resizable |
-		ImGuiTableFlags_BordersInnerV |
-		ImGuiTableFlags_SizingFixedFit |
-		ImGuiTableFlags_RowBg))
-	{
-		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 130.0f);
-		ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 130.0f);
-		ImGui::TableSetupColumn("Offset", ImGuiTableColumnFlags_WidthFixed, 50.0f);
-		ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
-		ImGui::TableSetupColumn("Flags", ImGuiTableColumnFlags_WidthFixed, 40.0f);
-
-		for (const auto* field : filteredFields)
-		{
-			ImGui::TableNextRow();
-
-			ImGui::TableSetColumnIndex(0);
-			if (field->isStatic)
-			{
-				ImGui::TextUnformatted(field->name.c_str());
-			}
-			else
-			{
-				ImGui::TextUnformatted(field->name.c_str());
-			}
-
-			ImGui::TableSetColumnIndex(1);
-			std::string typeName = field->typeName;
-			if (typeName.length() > 35) typeName = typeName.substr(0, 32) + "...";
-			ImGui::TextUnformatted(typeName.c_str());
-
-			ImGui::TableSetColumnIndex(2);
-			if (!field->isStatic)
-				ImGui::TextDisabled("0x%X", field->offset);
-			else
-				ImGui::TextDisabled("[S]");
-
-			ImGui::TableSetColumnIndex(3);
-			RenderEditableField(component, *field);
-
-			ImGui::TableSetColumnIndex(4);
-			if (field->isStatic)
-				ImGui::TextDisabled("S");
-		}
-
-		ImGui::EndTable();
-	}
-}
-
 void Inspector::RenderComponentsSection(InspectedObjectTab& tab)
 {
-	ImGui::SetNextItemWidth(200);
+	ImGui::PushItemWidth(-1);
 	ImGui::InputTextWithHint("##ComponentSearch", "Filter components...", tab.componentSearchBuffer, sizeof(tab.componentSearchBuffer));
+	ImGui::PopItemWidth();
 
 	ImGui::Spacing();
 
@@ -876,73 +919,61 @@ void Inspector::RenderComponentsSection(InspectedObjectTab& tab)
 		return;
 	}
 
-	ImGui::TextDisabled("Components: %zu of %zu", filteredComponentIndices.size(), tab.cachedComponents.size());
+	ImGui::TextDisabled("Components: %zu", filteredComponentIndices.size());
 	ImGui::Spacing();
 
-	if (ImGui::BeginTabBar("ComponentsTabs", ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_AutoSelectNewTabs))
+	for (const size_t idx : filteredComponentIndices)
 	{
-		for (const size_t idx : filteredComponentIndices)
+		const auto comp = tab.cachedComponents[idx];
+		const std::string& compName = tab.cachedComponentNames[idx];
+		const auto& fields = tab.cachedComponentFields[idx];
+		const auto& properties = tab.cachedComponentProperties.size() > idx ? tab.cachedComponentProperties[idx] : std::vector<ComponentPropertyInfo>{};
+		const auto& methods = tab.cachedComponentMethods.size() > idx ? tab.cachedComponentMethods[idx] : std::vector<ComponentMethodInfo>{};
+
+		ImGui::PushID(static_cast<int>(idx));
+
+		std::string headerLabel = compName + "##comp";
+
+		if (ImGui::CollapsingHeader(headerLabel.c_str()))
 		{
-			const auto comp = tab.cachedComponents[idx];
-			const std::string& compName = tab.cachedComponentNames[idx];
-			const auto& fields = tab.cachedComponentFields[idx];
-			const auto& properties = tab.cachedComponentProperties.size() > idx ? tab.cachedComponentProperties[idx] : std::vector<ComponentPropertyInfo>{};
-			const auto& methods = tab.cachedComponentMethods.size() > idx ? tab.cachedComponentMethods[idx] : std::vector<ComponentMethodInfo>{};
+			ImGui::Indent();
 
-			std::string tabLabel = compName + "##" + std::to_string(idx);
+			std::string fullName = GetComponentFullTypeName(comp);
+			ImGui::TextDisabled("Type: %s", fullName.c_str());
+			ImGui::Spacing();
 
-			if (ImGui::BeginTabItem(tabLabel.c_str()))
+			std::string fieldsLabel = "Fields";
+			if (!fields.empty()) fieldsLabel += " (" + std::to_string(fields.size()) + ")";
+			if (ImGui::CollapsingHeader(fieldsLabel.c_str()))
 			{
-				ImGui::Spacing();
-
-				std::string fullName = GetComponentFullTypeName(comp);
-				ImGui::TextDisabled("Type: %s", fullName.c_str());
-
-				ImGui::Spacing();
-				ImGui::Separator();
-				ImGui::Spacing();
-
-				std::string innerTabBarId = "InnerTabs_" + std::to_string(idx);
-
-				if (ImGui::BeginTabBar(innerTabBarId.c_str()))
-				{
-					std::string fieldsLabel = "Fields";
-					if (!fields.empty()) fieldsLabel += " (" + std::to_string(fields.size()) + ")";
-					if (ImGui::BeginTabItem(fieldsLabel.c_str()))
-					{
-						ImGui::Spacing();
-						RenderFieldsSection(comp, fields, tab, idx);
-						ImGui::EndTabItem();
-					}
-
-					std::string propsLabel = "Properties";
-					if (!properties.empty()) propsLabel += " (" + std::to_string(properties.size()) + ")";
-					if (ImGui::BeginTabItem(propsLabel.c_str()))
-					{
-						ImGui::Spacing();
-						RenderPropertiesSection(comp, properties, tab, idx);
-						ImGui::EndTabItem();
-					}
-
-					std::string methodsLabel = "Methods";
-					if (!methods.empty()) methodsLabel += " (" + std::to_string(methods.size()) + ")";
-					if (ImGui::BeginTabItem(methodsLabel.c_str()))
-					{
-						ImGui::Spacing();
-						RenderMethodsSection(comp, methods, tab, idx);
-						ImGui::EndTabItem();
-					}
-
-					ImGui::EndTabBar();
-				}
-
-				ImGui::EndTabItem();
+				ImGui::Indent();
+				RenderFieldsSection(comp, fields, tab, idx);
+				ImGui::Unindent();
 			}
+
+			std::string propsLabel = "Properties";
+			if (!properties.empty()) propsLabel += " (" + std::to_string(properties.size()) + ")";
+			if (ImGui::CollapsingHeader(propsLabel.c_str()))
+			{
+				ImGui::Indent();
+				RenderPropertiesSection(comp, properties, tab, idx);
+				ImGui::Unindent();
+			}
+
+			std::string methodsLabel = "Methods";
+			if (!methods.empty()) methodsLabel += " (" + std::to_string(methods.size()) + ")";
+			if (ImGui::CollapsingHeader(methodsLabel.c_str()))
+			{
+				ImGui::Indent();
+				RenderMethodsSection(comp, methods, tab, idx);
+				ImGui::Unindent();
+			}
+
+			ImGui::Unindent();
 		}
 
-		ImGui::EndTabBar();
+		ImGui::PopID();
 	}
-
 }
 
 void Inspector::RenderDetailsWindow()
@@ -962,7 +993,6 @@ void Inspector::RenderDetailsWindow()
 
 void Inspector::RenderTabBar()
 {
-
 	if (ImGui::BeginTabBar("InspectorTabs",
 		ImGuiTabBarFlags_Reorderable |
 		ImGuiTabBarFlags_AutoSelectNewTabs |
@@ -973,9 +1003,7 @@ void Inspector::RenderTabBar()
 			auto& tab = openTabs[i];
 
 			if (!Helper::SafeIsAlive(tab.gameObject))
-			{
 				continue;
-			}
 
 			bool tabOpen = true;
 			ImGuiTabItemFlags flags = 0;
@@ -1004,7 +1032,6 @@ void Inspector::RenderTabBar()
 
 		ImGui::EndTabBar();
 	}
-
 }
 
 void Inspector::RenderTabContent(InspectedObjectTab& tab)
@@ -1022,21 +1049,6 @@ void Inspector::RenderTabContent(InspectedObjectTab& tab)
 		return;
 	}
 
-	if (ImGui::Button("Refresh"))
-		RefreshTabData(tab);
-	ImGui::SameLine();
-	ImGui::Checkbox("Auto Update", &Config::settings.inspector.autoUpdateObject);
-	ImGui::SameLine();
-
-	if (ImGui::Button("Close Tab"))
-	{
-		int tabIndex = FindTabForObject(tab.gameObject);
-		if (tabIndex >= 0)
-			CloseTab(tabIndex);
-	}
-
-	ImGui::Separator();
-
 	std::string objectName = "(Unknown)";
 	if (tab.gameObject && Helper::SafeIsAlive(tab.gameObject))
 	{
@@ -1046,16 +1058,15 @@ void Inspector::RenderTabContent(InspectedObjectTab& tab)
 			objectName = name->ToString();
 	}
 
-	ImGui::AlignTextToFramePadding();
-	ImGui::Text("Name: %s", objectName.c_str());
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.9f, 0.7f, 1.0f));
+	ImGui::Text("%s", objectName.c_str());
+	ImGui::PopStyleColor();
 
+	ImGui::SameLine();
 	if (bool isActive = true; Helper::SafeGetActiveSelf(tab.gameObject, isActive))
 	{
-		ImGui::SameLine();
-		if (ImGui::Checkbox("##Active", &isActive))
+		if (ImGui::Checkbox("Active", &isActive))
 			Helper::SafeSetActive(tab.gameObject, isActive);
-		ImGui::SameLine();
-		ImGui::Text("Active");
 	}
 
 	ImGui::SameLine();
@@ -1070,25 +1081,33 @@ void Inspector::RenderTabContent(InspectedObjectTab& tab)
 			PinObject(tab.gameObject);
 	}
 
-	if (tab.gameObject && Helper::SafeIsAlive(tab.gameObject))
-	{
-		UT::String* tag;
-		if (const auto validTag = Helper::SafeGetTag(tab.gameObject, tag); tag && validTag)
-		{
-			ImGui::SameLine();
-			ImGui::TextDisabled("| Tag: %s", tag->ToString().c_str());
-		}
-	}
-
-	if (bool isStatic = false; Helper::SafeGetIsStatic(tab.gameObject, isStatic))
-	{
-		ImGui::SameLine();
-		ImGui::TextDisabled("| Static: %s", isStatic ? "Yes" : "No");
-	}
+	ImGui::SameLine();
+	if (ImGui::SmallButton("Refresh"))
+		RefreshTabData(tab);
+	ImGui::SameLine();
+	ImGui::Checkbox("Auto", &Config::settings.inspector.autoUpdateObject);
 
 	if (!tab.objectPath.empty())
-	{
 		ImGui::TextDisabled("Path: %s", tab.objectPath.c_str());
+
+	{
+		bool hasInfo = false;
+		if (tab.gameObject && Helper::SafeIsAlive(tab.gameObject))
+		{
+			UT::String* tag;
+			if (const auto validTag = Helper::SafeGetTag(tab.gameObject, tag); tag && validTag)
+			{
+				ImGui::SameLine();
+				ImGui::TextDisabled("| Tag: %s", tag->ToString().c_str());
+				hasInfo = true;
+			}
+		}
+
+		if (bool isStatic = false; Helper::SafeGetIsStatic(tab.gameObject, isStatic))
+		{
+			ImGui::SameLine();
+			ImGui::TextDisabled("| Static: %s", isStatic ? "Yes" : "No");
+		}
 	}
 
 	ImGui::Separator();
@@ -1100,16 +1119,11 @@ void Inspector::RenderTabContent(InspectedObjectTab& tab)
 			Helper::SafeGetTransform(tab.gameObject, transform);
 
 		if (transform)
-		{
 			RenderTransformSection(transform, tab);
-		}
 		else
-		{
 			ImGui::TextDisabled("Transform not available");
-		}
 
 		ImGui::Spacing();
-
 		RenderComponentsSection(tab);
 	}
 	ImGui::EndChild();

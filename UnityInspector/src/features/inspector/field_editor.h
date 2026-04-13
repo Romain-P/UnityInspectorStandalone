@@ -6,60 +6,60 @@ EditableType DetermineEditableType(const std::string& typeName);
 
 struct FieldEditorState
 {
-    bool showWindow = false;
-    std::string windowTitle;
-    
-    UR::Field* targetField = nullptr;
-    void* targetInstance = nullptr;
-    
-    UR::Class* nestedClass = nullptr;
-    void* nestedInstance = nullptr;
-    
-    char stringBuffer[1024] = {};
-    int intValue = 0;
-    float floatValue = 0.0f;
-    bool boolValue = false;
-    
-    std::function<void()> onValueChanged;
+	bool showWindow = false;
+	std::string windowTitle;
+
+	UR::Field* targetField = nullptr;
+	void* targetInstance = nullptr;
+
+	UR::Class* nestedClass = nullptr;
+	void* nestedInstance = nullptr;
+
+	char stringBuffer[1024] = {};
+	int intValue = 0;
+	float floatValue = 0.0f;
+	bool boolValue = false;
+
+	std::function<void()> onValueChanged;
 };
 
 struct FieldEditor final
 {
-    FieldEditor();
-    ~FieldEditor();
-    
-    void OpenFieldEditor(UR::Field* field, void* instance, const std::string& title);
-    
-    void Render();
-    
-    bool IsOpen() const { return state.showWindow; }
-    
-    void Close();
-    
-    static bool IsEditableType(const std::string& typeName);
-    static bool IsIntegerType(const std::string& typeName);
-    static bool IsFloatType(const std::string& typeName);
-    static bool IsBoolType(const std::string& typeName);
-    static bool IsStringType(const std::string& typeName);
-    static bool IsPointerType(const std::string& typeName);
-    
+	FieldEditor();
+	~FieldEditor();
+
+	void OpenFieldEditor(UR::Field* field, void* instance, const std::string& title);
+
+	void Render();
+
+	bool IsOpen() const { return state.showWindow; }
+
+	void Close();
+
+	static bool IsEditableType(const std::string& typeName);
+	static bool IsIntegerType(const std::string& typeName);
+	static bool IsFloatType(const std::string& typeName);
+	static bool IsBoolType(const std::string& typeName);
+	static bool IsStringType(const std::string& typeName);
+	static bool IsPointerType(const std::string& typeName);
+
 private:
-    FieldEditorState state;
-    std::vector<std::unique_ptr<FieldEditor>> nestedEditors;
+	FieldEditorState state;
+	std::vector<std::unique_ptr<FieldEditor>> nestedEditors;
 
-    static UR::Class* GetPointerClass(const std::string& typeName);
-    void ReadFieldValue();
-    void WriteFieldValue();
-    void RenderIntEditor();
-    void RenderFloatEditor();
-    void RenderBoolEditor();
-    void RenderStringEditor();
+	static UR::Class* GetPointerClass(const std::string& typeName);
+	void ReadFieldValue();
+	void WriteFieldValue();
+	void RenderIntEditor();
+	void RenderFloatEditor();
+	void RenderBoolEditor();
+	void RenderStringEditor();
 
-    void RenderNestedInspector();
+	void RenderNestedInspector();
 
-    void RenderNestedFieldValue(UR::Field* field, void* instance);
+	void RenderNestedFieldValue(UR::Field* field, void* instance);
 
-    static void ReadValueFromAddress(void* addr, const std::string& typeName, FieldEditorState& state);
-    static void WriteValueToAddress(void* addr, const std::string& typeName, const FieldEditorState& state);
-    static std::string FormatFieldValue(void* addr, const std::string& typeName);
+	static void ReadValueFromAddress(void* addr, const std::string& typeName, FieldEditorState& state);
+	static void WriteValueToAddress(void* addr, const std::string& typeName, const FieldEditorState& state);
+	static std::string FormatFieldValue(void* addr, const std::string& typeName);
 };

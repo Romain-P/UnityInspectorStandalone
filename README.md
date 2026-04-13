@@ -1,4 +1,4 @@
-# UnityInspector
+<h1 align="center">UnityInspectorStandalone</h1>
 
 <div align="center">
 
@@ -25,7 +25,7 @@ UnityInspector is a single-DLL runtime inspection tool that allows you to explor
 
 ### Key Highlights
 
-- **Single DLL injection** - No external dependencies required
+- **Single DLL** - No external dependencies required
 - **Dual runtime support** - Works with both Mono and IL2CPP backends
 - **Live editing** - Modify object properties in real-time
 
@@ -76,14 +76,13 @@ UnityInspector is a single-DLL runtime inspection tool that allows you to explor
 
 - Windows 10 or later
 - Unity game (Mono or IL2CPP) running on **DirectX 11**
-- DLL injector (optional)
 
 > **Note:** Only DirectX 11 is supported. DX12 and Vulkan are **not** supported. Launch your game with `-force-d3d11` to ensure DX11 mode.
 
 ### Steps
 
-1. Download the latest `UnityInspector.dll` from [Releases](https://github.com/PicoShot/UnityInspectorStandalone/releases)
-2. Rename dll to **version.dll** and copy it to game directory and run a game or inject the DLL into your target Unity game process using your preferred injector 
+1. Download the latest `winhttp.dll` from [Releases](https://github.com/PicoShot/UnityInspectorStandalone/releases)
+2. copy `winhttp.dll` to game directory and run game
 3. Press `INSERT` to toggle the menu
 
 ---

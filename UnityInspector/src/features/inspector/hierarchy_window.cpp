@@ -1,47 +1,78 @@
 #include "pch.h"
 #include "inspector.h"
 
+static void AppendNodeTree(const HierarchyNode& node, std::string& out, int depth)
+{
+	for (int i = 0; i < depth; i++)
+		out += (i == depth - 1) ? "  " : "| ";
+
+	bool isActive = true;
+	Helper::SafeGetActiveSelf(node.gameObject, isActive);
+
+	out += "+-- [" + std::to_string(depth) + "] " + node.name;
+	if (!isActive) out += " (inactive)";
+	out += "\n";
+
+	int idx = 0;
+	for (const auto& child : node.children)
+	{
+		for (int i = 0; i < depth; i++)
+			out += "| ";
+		out += "|   [" + std::to_string(idx) + "]\n";
+		AppendNodeTree(child, out, depth + 1);
+		idx++;
+	}
+}
+
+bool Inspector::NodeMatchesSearch(const HierarchyNode& node) const
+{
+	if (searchBuffer[0] == '\0') return true;
+	if (node.name.find(searchBuffer) != std::string::npos) return true;
+	for (const auto& child : node.children)
+	{
+		if (NodeMatchesSearch(child)) return true;
+	}
+	return false;
+}
+
+void Inspector::SetAllNodesExpanded(std::vector<HierarchyNode>& nodes, bool expanded)
+{
+	for (auto& node : nodes)
+	{
+		node.pendingExpand = true;
+		node.pendingExpandValue = expanded;
+		SetAllNodesExpanded(node.children, expanded);
+	}
+}
+
 void Inspector::RenderHierarchyNode(HierarchyNode& node, const int depth)
 {
 	if (!Helper::SafeIsAlive(node.gameObject)) return;
 
-	bool matchesSearch = true;
-	if (searchBuffer[0] != '\0')
+	const bool searching = searchBuffer[0] != '\0';
+
+	if (searching && !NodeMatchesSearch(node))
+		return;
+
+	if (searching)
 	{
-		matchesSearch = node.name.find(searchBuffer) != std::string::npos;
-
-		if (!matchesSearch)
-		{
-			for (auto& child : node.children)
-			{
-				std::function<bool(HierarchyNode&)> checkChildren = [&](HierarchyNode& n) -> bool {
-					if (n.name.find(searchBuffer) != std::string::npos) return true;
-					for (auto& c : n.children)
-					{
-						if (checkChildren(c)) return true;
-					}
-					return false;
-				};
-				if (checkChildren(child))
-				{
-					matchesSearch = true;
-					break;
-				}
-			}
-		}
+		ImGui::SetNextItemOpen(true);
 	}
-
-	if (!matchesSearch) return;
+	else if (node.pendingExpand)
+	{
+		ImGui::SetNextItemOpen(node.pendingExpandValue);
+		node.pendingExpand = false;
+	}
 
 	ImGui::PushID(node.gameObject);
 
 	const bool hasChildren = !node.children.empty();
 	const bool isSelected = (FindTabForObject(node.gameObject) >= 0);
 
-	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | 
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
 	                           ImGuiTreeNodeFlags_SpanAvailWidth |
 	                           ImGuiTreeNodeFlags_FramePadding;
-	
+
 	if (!hasChildren) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 	if (isSelected) flags |= ImGuiTreeNodeFlags_Selected;
 
@@ -52,40 +83,88 @@ void Inspector::RenderHierarchyNode(HierarchyNode& node, const int depth)
 		return;
 	}
 
+	if (!isActive)
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
 
-	const char* icon = hasChildren ? " " : "  ";
-	const char* activeIcon = isActive ? "" : " ";
-	
-	std::string label = activeIcon + std::string(icon) + node.name;
-	
+	std::string label = node.name;
+	if (hasChildren)
+		label += " [" + std::to_string(node.children.size()) + "]";
+
 	const bool nodeOpen = ImGui::TreeNodeEx(label.c_str(), flags);
 
+	if (!isActive)
+		ImGui::PopStyleColor();
 
-	if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+	if (ImGui::IsItemHovered())
 	{
-		OpenObjectInNewTab(node.gameObject);
+		ImGui::BeginTooltip();
+		ImGui::Text("%s", node.name.c_str());
+		if (!isActive) ImGui::TextDisabled("Inactive");
+		if (hasChildren) ImGui::TextDisabled("%zu children", node.children.size());
+		if (node.transform)
+		{
+			std::string path = BuildObjectPath(node.transform);
+			ImGui::TextDisabled("%s", path.c_str());
+		}
+		ImGui::EndTooltip();
 	}
 
-	if (ImGui::BeginPopupContextItem())
+	if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+		OpenObjectInNewTab(node.gameObject);
+
+	if (ImGui::BeginPopupContextItem("##NodeCtx"))
 	{
-		if (ImGui::MenuItem("Inspect", nullptr, false, true))
-		{
+		if (ImGui::MenuItem("Inspect"))
 			OpenObjectInNewTab(node.gameObject);
-		}
+
 		ImGui::Separator();
+
 		if (ImGui::MenuItem(isActive ? "Deactivate" : "Activate"))
-		{
 			Helper::SafeSetActive(node.gameObject, !isActive);
+
+		ImGui::Separator();
+
+		if (ImGui::MenuItem("Copy Name"))
+			ImGui::SetClipboardText(node.name.c_str());
+
+		if (node.transform)
+		{
+			if (ImGui::MenuItem("Copy Path"))
+			{
+				std::string path = BuildObjectPath(node.transform);
+				ImGui::SetClipboardText(path.c_str());
+			}
 		}
+
+		if (ImGui::MenuItem("Copy Hierarchy"))
+		{
+			std::string tree = node.name + "\n";
+			int idx = 0;
+			for (const auto& child : node.children)
+			{
+				tree += "  [" + std::to_string(idx) + "]\n";
+				AppendNodeTree(child, tree, 1);
+				idx++;
+			}
+			ImGui::SetClipboardText(tree.c_str());
+		}
+
+		if (hasChildren)
+		{
+			ImGui::Separator();
+			if (ImGui::MenuItem("Expand Children"))
+				SetAllNodesExpanded(node.children, true);
+			if (ImGui::MenuItem("Collapse Children"))
+				SetAllNodesExpanded(node.children, false);
+		}
+
 		ImGui::EndPopup();
 	}
 
 	if (hasChildren && nodeOpen)
 	{
 		for (auto& child : node.children)
-		{
 			RenderHierarchyNode(child, depth + 1);
-		}
 		ImGui::TreePop();
 	}
 

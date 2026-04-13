@@ -52,7 +52,8 @@ struct HierarchyNode final
     UT::Transform* transform = nullptr;
     std::string name;
     std::vector<HierarchyNode> children;
-    bool isExpanded = false;
+    bool pendingExpand = false;
+    bool pendingExpandValue = false;
 };
 
 struct InspectedObjectTab final
@@ -106,6 +107,8 @@ private:
     void RefreshHierarchy();
     void BuildHierarchyNode(HierarchyNode& node, UT::Transform* transform);
     void RenderHierarchyNode(HierarchyNode& node, int depth = 0);
+    bool NodeMatchesSearch(const HierarchyNode& node) const;
+    void SetAllNodesExpanded(std::vector<HierarchyNode>& nodes, bool expanded);
 
     void OpenObjectInNewTab(UT::GameObject* obj);
     void CloseTab(int tabIndex);

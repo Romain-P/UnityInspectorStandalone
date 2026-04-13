@@ -38,19 +38,34 @@ void Inspector::Render()
 	if (ImGui::Begin("Hierarchy", nullptr))
 	{
 		if (ImGui::Button("Refresh"))
-		{
 			RefreshHierarchy();
-		}
 
 		ImGui::SameLine();
 		ImGui::Checkbox("Auto", &Config::settings.inspector.autoRefresh);
 
 		ImGui::SameLine();
-		ImGui::TextDisabled("| %zu objects", rootNodes.size());
+		if (ImGui::SmallButton("Collapse"))
+			SetAllNodesExpanded(rootNodes, false);
 
 		ImGui::SameLine();
-		ImGui::SetNextItemWidth(-1);
-		ImGui::InputTextWithHint("##Search", "Search...", searchBuffer, sizeof(searchBuffer));
+		if (ImGui::SmallButton("Expand"))
+			SetAllNodesExpanded(rootNodes, true);
+
+		ImGui::SameLine();
+		ImGui::TextDisabled("| %zu", rootNodes.size());
+
+		ImGui::SameLine();
+		float clearW = searchBuffer[0] != '\0' ? 22.0f : 0.0f;
+		ImGui::SetNextItemWidth(-(clearW + (clearW > 0 ? ImGui::GetStyle().ItemSpacing.x : 0)));
+		ImGui::InputTextWithHint("##Search", "Search...", searchBuffer, sizeof(searchBuffer),
+			ImGuiInputTextFlags_EscapeClearsAll);
+
+		if (searchBuffer[0] != '\0')
+		{
+			ImGui::SameLine();
+			if (ImGui::SmallButton("x##ClearSearch"))
+				searchBuffer[0] = '\0';
+		}
 
 		ImGui::Separator();
 
@@ -58,7 +73,16 @@ void Inspector::Render()
 		{
 			if (rootNodes.empty())
 			{
-				ImGui::TextDisabled("Click Refresh to load scene hierarchy");
+				ImGui::Spacing();
+				ImGui::Spacing();
+				ImGui::NewLine();
+				float cx = (ImGui::GetContentRegionAvail().x - 180.0f) * 0.5f;
+				if (cx > 0.0f) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + cx);
+				ImGui::TextDisabled("No scene hierarchy loaded");
+				ImGui::Spacing();
+				if (cx > 0.0f) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + cx);
+				if (ImGui::Button("Load Scene Hierarchy", ImVec2(180, 0)))
+					RefreshHierarchy();
 			}
 			else
 			{

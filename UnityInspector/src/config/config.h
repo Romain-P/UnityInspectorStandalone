@@ -9,15 +9,6 @@ struct RuntimeState
 	UR::Mode unityMode;
 };
 
-struct InspectorSettings
-{
-	bool enabled = false;
-	bool autoUpdateObject = false;
-	bool autoRefresh = false;
-	bool showAssemblyExplorer = false;
-	bool showDebugConsole = false;
-};
-
 struct UserSettings
 {
 	struct INISettings
@@ -29,7 +20,14 @@ struct UserSettings
 		bool external_overlay = false;
 	} ini;
 
-	InspectorSettings inspector;
+	struct InspectorSettings
+	{
+		bool enabled = false;
+		bool autoUpdateObject = false;
+		bool autoRefresh = false;
+		bool showAssemblyExplorer = false;
+		bool showDebugConsole = false;
+	} inspector;
 
 	inline void Load() noexcept
 	{

@@ -11,7 +11,7 @@ static bool CaseInsensitiveFind(const std::string& haystack, const char* needle)
 
 	std::string lowerName;
 	lowerName.reserve(haystack.size());
-	for (char c : haystack)
+	for (const char c : haystack)
 		lowerName += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 
 	return lowerName.find(lower) != std::string::npos;

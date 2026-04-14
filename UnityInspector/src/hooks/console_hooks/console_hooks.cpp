@@ -8,10 +8,10 @@ void UNITY_CALLING_CONVENTION ConsoleHooks::HDebugLogObject(void* message)
 {
 	if (message)
 	{
-		auto* str = (UT::String*)message;
-		std::string msg = str->ToString();
-		std::string stackTrace = DebugConsole::GetStackTrace();
-		std::string source = DebugConsole::GetCallingSource();
+		const auto* str = static_cast<UT::String*>(message);
+		const std::string msg = str->ToString();
+		const std::string stackTrace = DebugConsole::GetStackTrace();
+		const std::string source = DebugConsole::GetCallingSource();
 		DebugConsole::AddLog(msg, LogType::Log, stackTrace, source);
 	}
 	HookManager::Fcall(HDebugLogObject, message);
@@ -21,10 +21,10 @@ void UNITY_CALLING_CONVENTION ConsoleHooks::HDebugLogString(void* message)
 {
 	if (message)
 	{
-		auto* str = (UT::String*)message;
-		std::string msg = str->ToString();
-		std::string stackTrace = DebugConsole::GetStackTrace();
-		std::string source = DebugConsole::GetCallingSource();
+		const auto* str = static_cast<UT::String*>(message);
+		const std::string msg = str->ToString();
+		const std::string stackTrace = DebugConsole::GetStackTrace();
+		const std::string source = DebugConsole::GetCallingSource();
 		DebugConsole::AddLog(msg, LogType::Log, stackTrace, source);
 	}
 	HookManager::Fcall(HDebugLogString, message);
@@ -34,10 +34,10 @@ void UNITY_CALLING_CONVENTION ConsoleHooks::HDebugLogFormat(void* message, void*
 {
 	if (message)
 	{
-		auto* str = (UT::String*)message;
-		std::string msg = str->ToString();
-		std::string stackTrace = DebugConsole::GetStackTrace();
-		std::string source = DebugConsole::GetCallingSource();
+		const auto* str = static_cast<UT::String*>(message);
+		const std::string msg = str->ToString();
+		const std::string stackTrace = DebugConsole::GetStackTrace();
+		const std::string source = DebugConsole::GetCallingSource();
 		DebugConsole::AddLog(msg, LogType::Log, stackTrace, source);
 	}
 	HookManager::Fcall(HDebugLogFormat, message, args);
@@ -47,10 +47,10 @@ void UNITY_CALLING_CONVENTION ConsoleHooks::HDebugLogWarningObject(void* message
 {
 	if (message)
 	{
-		auto* str = (UT::String*)message;
-		std::string msg = str->ToString();
-		std::string stackTrace = DebugConsole::GetStackTrace();
-		std::string source = DebugConsole::GetCallingSource();
+		const auto* str = static_cast<UT::String*>(message);
+		const std::string msg = str->ToString();
+		const std::string stackTrace = DebugConsole::GetStackTrace();
+		const std::string source = DebugConsole::GetCallingSource();
 		DebugConsole::AddLog(msg, LogType::Warning, stackTrace, source);
 	}
 	HookManager::Fcall(HDebugLogWarningObject, message);
@@ -60,10 +60,10 @@ void UNITY_CALLING_CONVENTION ConsoleHooks::HDebugLogWarningString(void* message
 {
 	if (message)
 	{
-		auto* str = (UT::String*)message;
-		std::string msg = str->ToString();
-		std::string stackTrace = DebugConsole::GetStackTrace();
-		std::string source = DebugConsole::GetCallingSource();
+		const auto* str = static_cast<UT::String*>(message);
+		const std::string msg = str->ToString();
+		const std::string stackTrace = DebugConsole::GetStackTrace();
+		const std::string source = DebugConsole::GetCallingSource();
 		DebugConsole::AddLog(msg, LogType::Warning, stackTrace, source);
 	}
 	HookManager::Fcall(HDebugLogWarningString, message);
@@ -73,10 +73,10 @@ void UNITY_CALLING_CONVENTION ConsoleHooks::HDebugLogErrorObject(void* message)
 {
 	if (message)
 	{
-		auto* str = (UT::String*)message;
-		std::string msg = str->ToString();
-		std::string stackTrace = DebugConsole::GetStackTrace();
-		std::string source = DebugConsole::GetCallingSource();
+		const auto* str = static_cast<UT::String*>(message);
+		const std::string msg = str->ToString();
+		const std::string stackTrace = DebugConsole::GetStackTrace();
+		const std::string source = DebugConsole::GetCallingSource();
 		DebugConsole::AddLog(msg, LogType::Error, stackTrace, source);
 	}
 	HookManager::Fcall(HDebugLogErrorObject, message);
@@ -86,10 +86,10 @@ void UNITY_CALLING_CONVENTION ConsoleHooks::HDebugLogErrorString(void* message)
 {
 	if (message)
 	{
-		auto* str = (UT::String*)message;
-		std::string msg = str->ToString();
-		std::string stackTrace = DebugConsole::GetStackTrace();
-		std::string source = DebugConsole::GetCallingSource();
+		const auto* str = static_cast<UT::String*>(message);
+		const std::string msg = str->ToString();
+		const std::string stackTrace = DebugConsole::GetStackTrace();
+		const std::string source = DebugConsole::GetCallingSource();
 		DebugConsole::AddLog(msg, LogType::Error, stackTrace, source);
 	}
 	HookManager::Fcall(HDebugLogErrorString, message);
@@ -99,10 +99,10 @@ void UNITY_CALLING_CONVENTION ConsoleHooks::HDebugLogException(void* exception)
 {
 	if (exception)
 	{
-		auto* str = (UT::String*)exception;
-		std::string msg = str->ToString();
-		std::string stackTrace = DebugConsole::GetStackTrace();
-		std::string source = DebugConsole::GetCallingSource();
+		const auto* str = static_cast<UT::String*>(exception);
+		const std::string msg = str->ToString();
+		const std::string stackTrace = DebugConsole::GetStackTrace();
+		const std::string source = DebugConsole::GetCallingSource();
 		DebugConsole::AddLog(msg, LogType::Exception, stackTrace, source);
 	}
 	HookManager::Fcall(HDebugLogException, exception);
@@ -112,10 +112,10 @@ void UNITY_CALLING_CONVENTION ConsoleHooks::HDebugLogAssertion(void* message)
 {
 	if (message)
 	{
-		auto* str = (UT::String*)message;
-		std::string msg = str->ToString();
-		std::string stackTrace = DebugConsole::GetStackTrace();
-		std::string source = DebugConsole::GetCallingSource();
+		const auto* str = static_cast<UT::String*>(message);
+		const std::string msg = str->ToString();
+		const std::string stackTrace = DebugConsole::GetStackTrace();
+		const std::string source = DebugConsole::GetCallingSource();
 		DebugConsole::AddLog(msg, LogType::Assert, stackTrace, source);
 	}
 	HookManager::Fcall(HDebugLogAssertion, message);
@@ -123,7 +123,7 @@ void UNITY_CALLING_CONVENTION ConsoleHooks::HDebugLogAssertion(void* message)
 
 void ConsoleHooks::Install()
 {
-	auto* unityCoreModule = UR::Get("UnityEngine.CoreModule.dll");
+	const auto* unityCoreModule = UR::Get("UnityEngine.CoreModule.dll");
 	if (!unityCoreModule) return;
 
 	auto* debugClass = unityCoreModule->Get("Debug", "UnityEngine");

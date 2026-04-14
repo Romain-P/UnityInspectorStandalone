@@ -7,7 +7,7 @@ void Inspector::RenderMethodInvokePopup()
 
 	ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
 
-	std::string title = "Invoke: " + invokeState.method.name + "###MethodInvoke";
+	const std::string title = "Invoke: " + invokeState.method.name + "###MethodInvoke";
 	if (ImGui::Begin(title.c_str(), &invokeState.showPopup))
 	{
 		ImGui::Text("Method: %s", invokeState.method.name.c_str());
@@ -34,7 +34,7 @@ void Inspector::RenderMethodInvokePopup()
 
 				ImGui::PushID(static_cast<int>(i));
 
-				std::string label = name + " (" + typeName + ")";
+				std::string label = std::format("{} ({})", name, typeName);
 				ImGui::Text("%s", label.c_str());
 				ImGui::SameLine();
 

@@ -1,7 +1,5 @@
 #pragma once
 #include "pch.h"
-#include <vector>
-#include <memory>
 
 class ITab
 {

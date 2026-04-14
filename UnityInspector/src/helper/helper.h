@@ -14,7 +14,7 @@ namespace Helper
 	bool SafeIsAlive(UnityObject* obj);
 	bool SafeGetTag(GameObject* obj, UT::String*& outTag);
 	bool SafeGetActiveSelf(GameObject* obj, bool& outActive);
-	bool SafeSetActive(GameObject* obj, bool value);
+	bool SafeSetActive(const GameObject* obj, bool value);
 	bool SafeGetIsStatic(GameObject* obj, bool& outStatic);
 	bool TryGetPosition(Transform* go, Vec3& outPos);
 	Camera* GetMainCamera();

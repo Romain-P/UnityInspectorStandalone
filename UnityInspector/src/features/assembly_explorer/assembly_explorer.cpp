@@ -6,8 +6,7 @@ REGISTER_FEATURE(AssemblyExplorer)
 
 void AssemblyExplorer::Update(const float deltaTime)
 {
-	const auto& [Enabled, AutoUpdateObject, AutoRefresh, ShowAssemblyExplorer, ShowDebugConsole] = Config::settings.inspector;
-	if (!Enabled) return;
+	if (const auto& [Enabled, AutoUpdateObject, AutoRefresh, ShowAssemblyExplorer, ShowDebugConsole] = Config::settings.inspector; !Enabled) return;
 
 	if (!dataLoaded && !UR::assembly.empty())
 	{
@@ -131,12 +130,11 @@ void AssemblyExplorer::RenderAssemblyExplorerWindow()
 
 		ImGui::Separator();
 
-		float availableHeight = ImGui::GetContentRegionAvail().y;
-		float availableWidth = ImGui::GetContentRegionAvail().x;
+		const float availableHeight = ImGui::GetContentRegionAvail().y;
 
-		const float minPanelWidth = 150.0f;
-		if (assemblyPanelWidth < minPanelWidth) assemblyPanelWidth = minPanelWidth;
-		if (classPanelWidth < minPanelWidth) classPanelWidth = minPanelWidth;
+		constexpr float minPanelWidth = 150.0f;
+		assemblyPanelWidth = std::max(assemblyPanelWidth, minPanelWidth);
+		classPanelWidth = std::max(classPanelWidth, minPanelWidth);
 
 		ImGui::BeginChild("AssemblyExplorerMain", ImVec2(0, availableHeight), false, ImGuiWindowFlags_NoScrollbar);
 
@@ -167,26 +165,26 @@ void AssemblyExplorer::RenderAssemblyExplorerWindow()
 	ImGui::End();
 }
 
-void AssemblyExplorer::RenderDivider(const char* id, float& widthToAdjust, float height)
+void AssemblyExplorer::RenderDivider(const char* id, float& widthToAdjust, float height) const
 {
 	ImGui::PushID(id);
 
-	ImVec2 pos = ImGui::GetCursorScreenPos();
-	ImVec2 size(8.0f, height);
+	const ImVec2 pos = ImGui::GetCursorScreenPos();
+	const ImVec2 size(8.0f, height);
 
 	ImDrawList* drawList = ImGui::GetWindowDrawList();
 
 	ImGui::InvisibleButton("divider", size);
 
-	bool isHovered = ImGui::IsItemHovered();
-	bool isActive = ImGui::IsItemActive();
+	const bool isHovered = ImGui::IsItemHovered();
+	const bool isActive = ImGui::IsItemActive();
 
 	if (isHovered || isActive)
 	{
 		ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
 	}
 
-	ImU32 color = isActive ? IM_COL32(100, 150, 255, 255) :
+	const ImU32 color = isActive ? IM_COL32(100, 150, 255, 255) :
 		(isHovered ? IM_COL32(150, 150, 150, 255) : IM_COL32(100, 100, 100, 100));
 
 	drawList->AddLine(
@@ -196,7 +194,7 @@ void AssemblyExplorer::RenderDivider(const char* id, float& widthToAdjust, float
 
 	if (isActive)
 	{
-		float delta = ImGui::GetIO().MouseDelta.x;
+		const float delta = ImGui::GetIO().MouseDelta.x;
 		widthToAdjust += delta;
 	}
 
@@ -247,7 +245,7 @@ void AssemblyExplorer::RenderAssemblyNode(AssemblyInfo& assembly)
 {
 	ImGui::PushID(&assembly);
 
-	bool isSelected = (selectedAssembly == &assembly);
+	const bool isSelected = (selectedAssembly == &assembly);
 
 	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth |
 		ImGuiTreeNodeFlags_OpenOnArrow |
@@ -257,9 +255,9 @@ void AssemblyExplorer::RenderAssemblyNode(AssemblyInfo& assembly)
 
 	const char* icon = isSelected ? " > " : "   ";
 
-	std::string label = icon + assembly.name;
+	const std::string label = icon + assembly.name;
 
-	bool nodeOpen = ImGui::TreeNodeEx(label.c_str(), flags);
+	const bool nodeOpen = ImGui::TreeNodeEx(label.c_str(), flags);
 
 	if (ImGui::IsItemClicked())
 	{
@@ -382,7 +380,7 @@ void AssemblyExplorer::RenderNamespaceNode(NamespaceGroup& ns)
 {
 	ImGui::PushID(&ns);
 
-	bool isSelected = (selectedNamespace == &ns);
+	const bool isSelected = (selectedNamespace == &ns);
 
 	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth |
 		ImGuiTreeNodeFlags_OpenOnArrow;
@@ -392,9 +390,9 @@ void AssemblyExplorer::RenderNamespaceNode(NamespaceGroup& ns)
 
 	const char* icon = (ns.name == "<Global Namespace>") ? "<> " : "{} ";
 
-	std::string label = icon + FormatNamespaceName(ns.name) + " (" + std::to_string(ns.classes.size()) + ")";
+	const std::string label = icon + FormatNamespaceName(ns.name) + " (" + std::to_string(ns.classes.size()) + ")";
 
-	bool nodeOpen = ImGui::TreeNodeEx(label.c_str(), flags);
+	const bool nodeOpen = ImGui::TreeNodeEx(label.c_str(), flags);
 	ns.isExpanded = nodeOpen;
 
 	if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
@@ -426,7 +424,7 @@ void AssemblyExplorer::RenderClassNode(AssemblyClassInfo& classInfo)
 {
 	ImGui::PushID(&classInfo);
 
-	bool isSelected = (selectedClass == &classInfo);
+	const bool isSelected = (selectedClass == &classInfo);
 
 	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth |
 		ImGuiTreeNodeFlags_Leaf |
@@ -434,10 +432,10 @@ void AssemblyExplorer::RenderClassNode(AssemblyClassInfo& classInfo)
 
 	if (isSelected) flags |= ImGuiTreeNodeFlags_Selected;
 
-	ImVec4 color = GetClassColor(classInfo);
+	const ImVec4 color = GetClassColor(classInfo);
 	ImGui::PushStyleColor(ImGuiCol_Text, color);
 
-	std::string label = "C " + classInfo.name;
+	const std::string label = "C " + classInfo.name;
 	ImGui::TreeNodeEx(label.c_str(), flags);
 
 	ImGui::PopStyleColor();
@@ -528,12 +526,12 @@ void AssemblyExplorer::RenderClassDetailsPanel()
 				auto& instance = selectedClass->instances[i];
 				std::string label = std::to_string(i + 1) + " - " + instance.displayName;
 
-				bool isSelected = (selectedInstance == &instance);
-				if (ImGui::Selectable(label.c_str(), isSelected))
+				bool lIsSelected = (selectedInstance == &instance);
+				if (ImGui::Selectable(label.c_str(), lIsSelected))
 				{
 					selectedInstance = &instance;
 				}
-				if (isSelected)
+				if (lIsSelected)
 					ImGui::SetItemDefaultFocus();
 			}
 
@@ -828,7 +826,7 @@ void AssemblyExplorer::SelectInstance(ClassInstanceInfo* instance)
 	selectedInstance = instance;
 }
 
-void AssemblyExplorer::RefreshInstances(AssemblyClassInfo* classInfo)
+void AssemblyExplorer::RefreshInstances(AssemblyClassInfo* classInfo) const
 {
 	if (!classInfo || !classInfo->classHandle) return;
 
@@ -836,7 +834,7 @@ void AssemblyExplorer::RefreshInstances(AssemblyClassInfo* classInfo)
 
 	try
 	{
-		auto objects = classInfo->classHandle->FindObjectsOfType<void*>();
+		const auto objects = classInfo->classHandle->FindObjectsOfType<void*>();
 		for (auto* obj : objects)
 		{
 			if (!obj) continue;
@@ -873,25 +871,25 @@ std::string AssemblyExplorer::FormatNamespaceName(const std::string& name) const
 ImVec4 AssemblyExplorer::GetClassColor(const AssemblyClassInfo& classInfo) const
 {
 	if (classInfo.parent == "MonoBehaviour")
-		return ImVec4(0.4f, 0.8f, 0.4f, 1.0f);  // Green for MonoBehaviour
+		return {0.4f, 0.8f, 0.4f, 1.0f};  // Green for MonoBehaviour
 	if (classInfo.parent == "ScriptableObject")
-		return ImVec4(0.8f, 0.6f, 0.4f, 1.0f);  // Orange for ScriptableObject
+		return {0.8f, 0.6f, 0.4f, 1.0f};  // Orange for ScriptableObject
 	if (classInfo.parent == "Component")
-		return ImVec4(0.4f, 0.6f, 0.8f, 1.0f);  // Blue for Component
+		return {0.4f, 0.6f, 0.8f, 1.0f};  // Blue for Component
 	if (classInfo.parent == "Object")
-		return ImVec4(0.8f, 0.8f, 0.4f, 1.0f);  // Yellow for Object
+		return {0.8f, 0.8f, 0.4f, 1.0f};  // Yellow for Object
 	if (!classInfo.parent.empty())
-		return ImVec4(0.7f, 0.7f, 0.7f, 1.0f);  // Gray for others with parent
+		return {0.7f, 0.7f, 0.7f, 1.0f};  // Gray for others with parent
 
-	return ImVec4(0.9f, 0.9f, 0.9f, 1.0f);      // White for base classes
+	return {0.9f, 0.9f, 0.9f, 1.0f};      // White for base classes
 }
 
 
-void AssemblyExplorer::RenderFieldRow(UR::Field* field, void* instance)
+void AssemblyExplorer::RenderFieldRow(const UR::Field* field, void* instance) const
 {
 	if (!field || !field->type) return;
 
-	std::string typeName = field->type->name;
+	const std::string typeName = field->type->name;
 
 	try
 	{
@@ -991,12 +989,11 @@ void AssemblyExplorer::RenderFieldRow(UR::Field* field, void* instance)
 		}
 		else if (instance)
 		{
-			void* fieldAddr = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(instance) + field->offset);
+			const auto fieldAddr = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(instance) + field->offset);
 
 			if (typeName == "System.String")
 			{
-				UT::String* strPtr = *reinterpret_cast<UT::String**>(fieldAddr);
-				if (strPtr)
+				if (const UT::String* strPtr = *static_cast<UT::String**>(fieldAddr))
 				{
 					std::string str = strPtr->ToString();
 					if (str.length() > 25) str = str.substr(0, 22) + "...";
@@ -1009,68 +1006,67 @@ void AssemblyExplorer::RenderFieldRow(UR::Field* field, void* instance)
 			}
 			else if (typeName == "System.Boolean" || typeName == "System.Bool")
 			{
-				bool value = *reinterpret_cast<bool*>(fieldAddr);
+				const bool value = *static_cast<bool*>(fieldAddr);
 				ImGui::Text("%s", value ? "true" : "false");
 			}
 			else if (typeName == "System.Single" || typeName == "System.Float")
 			{
-				float value = *reinterpret_cast<float*>(fieldAddr);
+				const float value = *static_cast<float*>(fieldAddr);
 				ImGui::Text("%.4f", value);
 			}
 			else if (typeName == "System.Double")
 			{
-				double value = *reinterpret_cast<double*>(fieldAddr);
+				const double value = *static_cast<double*>(fieldAddr);
 				ImGui::Text("%.4f", value);
 			}
 			else if (typeName == "System.Int64")
 			{
-				int64_t value = *reinterpret_cast<int64_t*>(fieldAddr);
+				const int64_t value = *static_cast<int64_t*>(fieldAddr);
 				ImGui::Text("%lld", value);
 			}
 			else if (typeName == "System.UInt64")
 			{
-				uint64_t value = *reinterpret_cast<uint64_t*>(fieldAddr);
+				const uint64_t value = *static_cast<uint64_t*>(fieldAddr);
 				ImGui::Text("%llu", value);
 			}
 			else if (typeName == "System.Int16" || typeName == "System.Short")
 			{
-				int16_t value = *reinterpret_cast<int16_t*>(fieldAddr);
+				const int16_t value = *static_cast<int16_t*>(fieldAddr);
 				ImGui::Text("%d", value);
 			}
 			else if (typeName == "System.UInt16" || typeName == "System.UShort")
 			{
-				uint16_t value = *reinterpret_cast<uint16_t*>(fieldAddr);
+				const uint16_t value = *static_cast<uint16_t*>(fieldAddr);
 				ImGui::Text("%u", value);
 			}
 			else if (typeName == "System.Byte")
 			{
-				uint8_t value = *reinterpret_cast<uint8_t*>(fieldAddr);
+				const uint8_t value = *static_cast<uint8_t*>(fieldAddr);
 				ImGui::Text("%u", value);
 			}
 			else if (typeName == "System.SByte")
 			{
-				int8_t value = *reinterpret_cast<int8_t*>(fieldAddr);
+				const int8_t value = *static_cast<int8_t*>(fieldAddr);
 				ImGui::Text("%d", value);
 			}
 			else if (typeName == "System.Int32" || typeName == "System.Int")
 			{
-				int32_t value = *reinterpret_cast<int32_t*>(fieldAddr);
+				const int32_t value = *static_cast<int32_t*>(fieldAddr);
 				ImGui::Text("%d", value);
 			}
 			else if (typeName == "System.UInt32" || typeName == "System.UInt")
 			{
-				uint32_t value = *reinterpret_cast<uint32_t*>(fieldAddr);
+				const uint32_t value = *static_cast<uint32_t*>(fieldAddr);
 				ImGui::Text("%u", value);
 			}
 			else if (typeName == "UnityEngine.Vector3")
 			{
-				Vec3 value = *reinterpret_cast<Vec3*>(fieldAddr);
+				const Vec3 value = *static_cast<Vec3*>(fieldAddr);
 				ImGui::Text("(%.2f, %.2f, %.2f)", value.x, value.y, value.z);
 			}
 			else
 			{
-				void* ptr = *reinterpret_cast<void**>(fieldAddr);
-				if (ptr)
+				if (void* ptr = *static_cast<void**>(fieldAddr))
 					ImGui::TextDisabled("%p", ptr);
 				else
 					ImGui::TextDisabled("null");
@@ -1093,7 +1089,7 @@ void AssemblyExplorer::RenderMethodInvokePopup()
 
 	ImGui::OpenPopup("Invoke Method");
 
-	ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+	const ImVec2 center = ImGui::GetMainViewport()->GetCenter();
 	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 
 	if (ImGui::BeginPopupModal("Invoke Method", &invokeState.showPopup, ImGuiWindowFlags_AlwaysAutoResize))
@@ -1107,7 +1103,7 @@ void AssemblyExplorer::RenderMethodInvokePopup()
 			if (!arg) continue;
 
 			std::string typeName = arg->pType ? arg->pType->name : "unknown";
-			EditableType paramType = DetermineEditableType(typeName);
+			const EditableType paramType = DetermineEditableType(typeName);
 
 			ImGui::PushID(static_cast<int>(i));
 			ImGui::Text("%s (%s):", arg->name.c_str(), typeName.c_str());
@@ -1160,18 +1156,18 @@ void AssemblyExplorer::RenderMethodInvokePopup()
 					paramTypes.push_back(EditableType::None);
 			}
 
-			auto paramBuffers = Helper::BuildInvokeParams(invokeState.parameterValues, paramTypes);
+			auto [params, buffers] = Helper::BuildInvokeParams(invokeState.parameterValues, paramTypes);
 
 			bool success = false;
-			bool isStatic = invokeState.targetMethod->flags & 0x10;
+			const bool isStatic = invokeState.targetMethod->flags & 0x10;
 			void* obj = isStatic ? nullptr : invokeState.targetInstance;
 			void* result = Helper::SafeInvokeMethod(obj, invokeState.targetMethod->address,
-				paramBuffers.params.empty() ? nullptr : paramBuffers.params.data(), success);
+				params.empty() ? nullptr : params.data(), success);
 
 			invokeState.hasResult = true;
 			if (success && result)
 			{
-				std::string retTypeName = invokeState.targetMethod->return_type
+				const std::string retTypeName = invokeState.targetMethod->return_type
 					? invokeState.targetMethod->return_type->name : "void";
 
 				if (retTypeName == "System.Void" || retTypeName == "void")
@@ -1180,7 +1176,7 @@ void AssemblyExplorer::RenderMethodInvokePopup()
 				}
 				else
 				{
-					EditableType retType = DetermineEditableType(retTypeName);
+					const EditableType retType = DetermineEditableType(retTypeName);
 					void* unboxed = UR::Invoke<void*, void*>(
 						Config::state.unityMode == UnityResolve::Mode::Mono
 						? "mono_object_unbox" : "il2cpp_object_unbox", result);
@@ -1214,7 +1210,7 @@ void AssemblyExplorer::RenderMethodInvokePopup()
 			}
 			else if (success)
 			{
-				std::string retTypeName = invokeState.targetMethod->return_type
+				const std::string retTypeName = invokeState.targetMethod->return_type
 					? invokeState.targetMethod->return_type->name : "void";
 				invokeState.resultText = (retTypeName == "System.Void" || retTypeName == "void")
 					? "(completed)" : "(null)";

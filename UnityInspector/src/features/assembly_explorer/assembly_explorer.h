@@ -72,7 +72,7 @@ private:
 	void RenderAssemblyListPanel();
 	void RenderClassListPanel();
 	void RenderClassDetailsPanel();
-	void RenderDivider(const char* id, float& widthToAdjust, float height);
+	void RenderDivider(const char* id, float& widthToAdjust, float height) const;
 
 	void RenderAssemblyNode(AssemblyInfo& assembly);
 	void RenderNamespaceNode(NamespaceGroup& ns);
@@ -81,9 +81,9 @@ private:
 	void SelectAssembly(AssemblyInfo* assembly);
 	void SelectClass(AssemblyClassInfo* classInfo);
 	void SelectInstance(ClassInstanceInfo* instance);
-	void RefreshInstances(AssemblyClassInfo* classInfo);
+	void RefreshInstances(AssemblyClassInfo* classInfo) const;
 
-	void RenderFieldRow(UR::Field* field, void* instance);
+	void RenderFieldRow(const UR::Field* field, void* instance) const;
 	void RenderMethodInvokePopup();
 
 	std::unique_ptr<FieldEditor> fieldEditor;

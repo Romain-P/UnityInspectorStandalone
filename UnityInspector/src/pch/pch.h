@@ -29,6 +29,7 @@
 #include <memory>
 #include <string>
 #include <cctype>
+#include <numbers>
 
 // SDK
 #include "unityresolve/UnityResolve.hpp"

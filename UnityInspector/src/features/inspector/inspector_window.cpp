@@ -1,33 +1,31 @@
 #include "pch.h"
 #include "inspector.h"
-#include <cmath>
 
 static void QuaternionToEuler(float x, float y, float z, float w, float outEuler[3])
 {
-	float sinr = 2.0f * (w * x + y * z);
-	float cosr = 1.0f - 2.0f * (x * x + y * y);
-	outEuler[0] = atan2f(sinr, cosr) * (180.0f / 3.14159265f);
+	const float sinr = 2.0f * (w * x + y * z);
+	const float cosr = 1.0f - 2.0f * (x * x + y * y);
+	outEuler[0] = atan2f(sinr, cosr) * (180.0f / std::numbers::pi_v<float>);
 
-	float sinp = 2.0f * (w * y - z * x);
-	if (fabsf(sinp) >= 1.0f)
+	if (const float sinp = 2.0f * (w * y - z * x); fabsf(sinp) >= 1.0f)
 		outEuler[1] = copysignf(90.0f, sinp);
 	else
-		outEuler[1] = asinf(sinp) * (180.0f / 3.14159265f);
+		outEuler[1] = asinf(sinp) * (180.0f / std::numbers::pi_v<float>);
 
-	float siny = 2.0f * (w * z + x * y);
-	float cosy = 1.0f - 2.0f * (y * y + z * z);
-	outEuler[2] = atan2f(siny, cosy) * (180.0f / 3.14159265f);
+	const float siny = 2.0f * (w * z + x * y);
+	const float cosy = 1.0f - 2.0f * (y * y + z * z);
+	outEuler[2] = atan2f(siny, cosy) * (180.0f / std::numbers::pi_v<float>);
 }
 
 static void EulerToQuaternion(float rollDeg, float pitchDeg, float yawDeg, float outQ[4])
 {
-	float r = rollDeg * (3.14159265f / 360.0f);
-	float p = pitchDeg * (3.14159265f / 360.0f);
-	float y = yawDeg * (3.14159265f / 360.0f);
+	const float r = rollDeg * (std::numbers::pi_v<float> / 360.0f);
+	const float p = pitchDeg * (std::numbers::pi_v<float> / 360.0f);
+	const float y = yawDeg * (std::numbers::pi_v<float> / 360.0f);
 
-	float cr = cosf(r), sr = sinf(r);
-	float cp = cosf(p), sp = sinf(p);
-	float cy = cosf(y), sy = sinf(y);
+	const float cr = cosf(r), sr = sinf(r);
+	const float cp = cosf(p), sp = sinf(p);
+	const float cy = cosf(y), sy = sinf(y);
 
 	outQ[0] = sr * cp * cy - cr * sp * sy;
 	outQ[1] = cr * sp * cy + sr * cp * sy;
@@ -228,8 +226,7 @@ void Inspector::RenderEditableField(UT::Component* component, const ComponentFie
 		}
 		case EditableType::Double:
 		{
-			double val;
-			if (Helper::SafeReadDouble(component, field.offset, val))
+			if (double val; Helper::SafeReadDouble(component, field.offset, val))
 			{
 				float fVal = static_cast<float>(val);
 				if (ImGui::DragFloat("##val", &fVal, 0.01f))
@@ -251,10 +248,9 @@ void Inspector::RenderEditableField(UT::Component* component, const ComponentFie
 		}
 		case EditableType::String:
 		{
-			UT::String* strPtr = nullptr;
-			if (Helper::SafeReadStringPtr(component, field.offset, strPtr))
+			if (UT::String* strPtr = nullptr; Helper::SafeReadStringPtr(component, field.offset, strPtr))
 			{
-				std::string currentStr = strPtr ? strPtr->ToString() : "(null)";
+				const std::string currentStr = strPtr ? strPtr->ToString() : "(null)";
 				ImGui::TextDisabled("\"%s\"", currentStr.c_str());
 			}
 			else { ImGui::TextDisabled("ERROR"); }
@@ -262,8 +258,7 @@ void Inspector::RenderEditableField(UT::Component* component, const ComponentFie
 		}
 		case EditableType::Vector2:
 		{
-			UT::Vector2 val;
-			if (Helper::SafeReadVector2(component, field.offset, val))
+			if (UT::Vector2 val; Helper::SafeReadVector2(component, field.offset, val))
 			{
 				float arr[2] = { val.x, val.y };
 				if (ImGui::DragFloat2("##val", arr, 0.1f))
@@ -291,8 +286,7 @@ void Inspector::RenderEditableField(UT::Component* component, const ComponentFie
 		}
 		case EditableType::Vector4:
 		{
-			UT::Vector4 val;
-			if (Helper::SafeReadVector4(component, field.offset, val))
+			if (UT::Vector4 val; Helper::SafeReadVector4(component, field.offset, val))
 			{
 				float arr[4] = { val.x, val.y, val.z, val.w };
 				if (ImGui::DragFloat4("##val", arr, 0.1f))
@@ -499,7 +493,7 @@ void Inspector::RenderEditableProperty(UT::Component* component, const Component
 			}
 			else if (!prop.canWrite)
 			{
-				ImVec4 col(val.r, val.g, val.b, val.a);
+				const ImVec4 col(val.r, val.g, val.b, val.a);
 				ImGui::ColorButton("##preview", col, ImGuiColorEditFlags_NoTooltip, ImVec2(20, 14));
 			}
 		}
@@ -523,8 +517,8 @@ void Inspector::RenderTransformSection(UT::Transform* transform, InspectedObject
 
 	ImGui::Indent(10.0f);
 
-	ImVec4 activeBtnCol = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
-	ImVec4 inactiveBtnCol = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+	const ImVec4 activeBtnCol = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
+	const ImVec4 inactiveBtnCol = ImGui::GetStyleColorVec4(ImGuiCol_Button);
 
 	ImGui::PushStyleColor(ImGuiCol_Button, tab.showWorldTransform ? activeBtnCol : inactiveBtnCol);
 	if (ImGui::SmallButton("World")) tab.showWorldTransform = !tab.showWorldTransform;
@@ -617,10 +611,10 @@ void Inspector::RenderFieldsSection(UT::Component* component, const std::vector<
 
 	if (componentIndex >= tab.fieldSearchBuffers.size())
 		tab.fieldSearchBuffers.resize(componentIndex + 1);
-	char* searchBuffer = tab.fieldSearchBuffers[componentIndex].data();
+	char* lSearchBuffer = tab.fieldSearchBuffers[componentIndex].data();
 
 	ImGui::PushItemWidth(-180);
-	ImGui::InputTextWithHint("##FieldSearch", "Search fields...", searchBuffer, 256);
+	ImGui::InputTextWithHint("##FieldSearch", "Search fields...", lSearchBuffer, 256);
 	ImGui::PopItemWidth();
 
 	ImGui::SameLine();
@@ -635,7 +629,7 @@ void Inspector::RenderFieldsSection(UT::Component* component, const std::vector<
 	std::vector<const ComponentFieldInfo*> filteredFields;
 	for (const auto& field : fields)
 	{
-		if (PassesFieldFilter(field, searchBuffer, tab.filterEditableOnly, tab.filterStaticOnly, tab.filterInstanceOnly))
+		if (PassesFieldFilter(field, lSearchBuffer, tab.filterEditableOnly, tab.filterStaticOnly, tab.filterInstanceOnly))
 			filteredFields.push_back(&field);
 	}
 
@@ -711,10 +705,10 @@ void Inspector::RenderPropertiesSection(UT::Component* component, const std::vec
 
 	if (componentIndex >= tab.propertySearchBuffers.size())
 		tab.propertySearchBuffers.resize(componentIndex + 1);
-	char* searchBuffer = tab.propertySearchBuffers[componentIndex].data();
+	char* lSearchBuffer = tab.propertySearchBuffers[componentIndex].data();
 
 	ImGui::PushItemWidth(-100);
-	ImGui::InputTextWithHint("##PropertySearch", "Search properties...", searchBuffer, 256);
+	ImGui::InputTextWithHint("##PropertySearch", "Search properties...", lSearchBuffer, 256);
 	ImGui::PopItemWidth();
 
 	ImGui::SameLine();
@@ -725,7 +719,7 @@ void Inspector::RenderPropertiesSection(UT::Component* component, const std::vec
 	std::vector<const ComponentPropertyInfo*> filteredProps;
 	for (const auto& prop : properties)
 	{
-		if (PassesPropertyFilter(prop, searchBuffer, tab.filterEditableOnly))
+		if (PassesPropertyFilter(prop, lSearchBuffer, tab.filterEditableOnly))
 			filteredProps.push_back(&prop);
 	}
 
@@ -783,10 +777,10 @@ void Inspector::RenderMethodsSection(UT::Component* component, const std::vector
 
 	if (componentIndex >= tab.methodSearchBuffers.size())
 		tab.methodSearchBuffers.resize(componentIndex + 1);
-	char* searchBuffer = tab.methodSearchBuffers[componentIndex].data();
+	char* lSearchBuffer = tab.methodSearchBuffers[componentIndex].data();
 
 	ImGui::PushItemWidth(-150);
-	ImGui::InputTextWithHint("##MethodSearch", "Search methods...", searchBuffer, 256);
+	ImGui::InputTextWithHint("##MethodSearch", "Search methods...", lSearchBuffer, 256);
 	ImGui::PopItemWidth();
 
 	ImGui::SameLine();
@@ -799,7 +793,7 @@ void Inspector::RenderMethodsSection(UT::Component* component, const std::vector
 	std::vector<const ComponentMethodInfo*> filteredMethods;
 	for (const auto& method : methods)
 	{
-		if (PassesMethodFilter(method, searchBuffer, tab.filterStaticOnly, tab.filterInstanceOnly))
+		if (PassesMethodFilter(method, lSearchBuffer, tab.filterStaticOnly, tab.filterInstanceOnly))
 			filteredMethods.push_back(&method);
 	}
 
@@ -1042,8 +1036,7 @@ void Inspector::RenderTabContent(InspectedObjectTab& tab)
 		ImGui::Spacing();
 		if (ImGui::Button("Close Tab"))
 		{
-			int tabIndex = FindTabForObject(tab.gameObject);
-			if (tabIndex >= 0)
+			if (const int tabIndex = FindTabForObject(tab.gameObject); tabIndex >= 0)
 				CloseTab(tabIndex);
 		}
 		return;
@@ -1091,7 +1084,6 @@ void Inspector::RenderTabContent(InspectedObjectTab& tab)
 		ImGui::TextDisabled("Path: %s", tab.objectPath.c_str());
 
 	{
-		bool hasInfo = false;
 		if (tab.gameObject && Helper::SafeIsAlive(tab.gameObject))
 		{
 			UT::String* tag;
@@ -1099,7 +1091,6 @@ void Inspector::RenderTabContent(InspectedObjectTab& tab)
 			{
 				ImGui::SameLine();
 				ImGui::TextDisabled("| Tag: %s", tag->ToString().c_str());
-				hasInfo = true;
 			}
 		}
 

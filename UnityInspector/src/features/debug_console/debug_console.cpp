@@ -61,23 +61,18 @@ std::string DebugConsole::GetCallingSource()
 
 	if (mGetName)
 	{
-		auto* nameStr = mGetName->Invoke<UT::String*, void*>(methodInfo);
-		if (nameStr) methodName = nameStr->ToString();
+		if (const auto* nameStr = mGetName->Invoke<UT::String*, void*>(methodInfo)) methodName = nameStr->ToString();
 	}
 
 	if (mGetDeclaringType)
 	{
-		auto* type = mGetDeclaringType->Invoke<void*, void*>(methodInfo);
-		if (type)
+		if (auto* type = mGetDeclaringType->Invoke<void*, void*>(methodInfo))
 		{
-			auto* typeClass = UR::Get("System.dll")->Get("Type", "System");
-			if (typeClass)
+			if (auto* typeClass = UR::Get("System.dll")->Get("Type", "System"))
 			{
-				auto* mGetFullName = typeClass->Get<UR::Method>("get_FullName");
-				if (mGetFullName)
+				if (auto* mGetFullName = typeClass->Get<UR::Method>("get_FullName"))
 				{
-					auto* fullNameStr = mGetFullName->Invoke<UT::String*, void*>(type);
-					if (fullNameStr) className = fullNameStr->ToString();
+					if (const auto* fullNameStr = mGetFullName->Invoke<UT::String*, void*>(type)) className = fullNameStr->ToString();
 				}
 			}
 		}
@@ -97,7 +92,7 @@ void DebugConsole::Render()
 
 void DebugConsole::AddLog(const std::string& message, LogType type, const std::string& stackTrace, const std::string& source)
 {
-	std::lock_guard<std::mutex> lock(logMutex);
+	std::scoped_lock lock(logMutex);
 
 	logBuffer.emplace_back(message, stackTrace, type, currentTime, source);
 
@@ -109,7 +104,7 @@ void DebugConsole::AddLog(const std::string& message, LogType type, const std::s
 
 void DebugConsole::ClearLogs()
 {
-	std::lock_guard<std::mutex> lock(logMutex);
+	std::scoped_lock lock(logMutex);
 	logBuffer.clear();
 }
 
@@ -157,22 +152,22 @@ bool DebugConsole::PassesFilter(const LogEntry& entry) const
 	if (filterBuffer[0] == '\0') return true;
 
 	std::string filter = filterBuffer;
-	std::transform(filter.begin(), filter.end(), filter.begin(), ::tolower);
+	std::ranges::transform(filter, filter.begin(), ::tolower);
 
 	std::string message = entry.message;
-	std::transform(message.begin(), message.end(), message.begin(), ::tolower);
+	std::ranges::transform(message, message.begin(), ::tolower);
 
 	if (message.find(filter) != std::string::npos) return true;
 
 	std::string source = entry.source;
-	std::transform(source.begin(), source.end(), source.begin(), ::tolower);
+	std::ranges::transform(source, source.begin(), ::tolower);
 
 	return source.find(filter) != std::string::npos;
 }
 
 void DebugConsole::RenderLogEntry(const LogEntry& entry, int index)
 {
-	ImU32 color = GetLogColor(entry.type);
+	const ImU32 color = GetLogColor(entry.type);
 	const char* typeStr = GetLogTypeString(entry.type);
 
 	std::string display;
@@ -183,8 +178,7 @@ void DebugConsole::RenderLogEntry(const LogEntry& entry, int index)
 
 	ImGui::PushStyleColor(ImGuiCol_Text, color);
 
-	bool hasStackTrace = !entry.stackTrace.empty();
-	if (hasStackTrace)
+	if (!entry.stackTrace.empty())
 	{
 		ImGui::PushID(index);
 		if (ImGui::Selectable(display.c_str(), selectedLogIndex == index))
@@ -211,8 +205,7 @@ void DebugConsole::RenderConsoleWindow()
 	ImGui::SetNextWindowSize(ImVec2(900, 500), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
 
-	ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar;
-	if (!ImGui::Begin("Debug Console", &Config::settings.inspector.showDebugConsole, windowFlags))
+	if (constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar; !ImGui::Begin("Debug Console", &Config::settings.inspector.showDebugConsole, windowFlags))
 	{
 		ImGui::End();
 		return;
@@ -268,12 +261,12 @@ void DebugConsole::RenderConsoleWindow()
 
 	ImGui::Separator();
 
-	ImVec2 available = ImGui::GetContentRegionAvail();
-	float logListWidth = selectedLogIndex >= 0 ? available.x * 0.6f : available.x;
+	const ImVec2 available = ImGui::GetContentRegionAvail();
+	const float logListWidth = selectedLogIndex >= 0 ? available.x * 0.6f : available.x;
 
 	ImGui::BeginChild("LogScroll", ImVec2(logListWidth, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
 
-	std::lock_guard<std::mutex> lock(logMutex);
+	std::scoped_lock lock(logMutex);
 
 	int index = 0;
 	for (const auto& entry : logBuffer)
@@ -291,7 +284,7 @@ void DebugConsole::RenderConsoleWindow()
 
 	ImGui::EndChild();
 
-	if (selectedLogIndex >= 0 && selectedLogIndex < static_cast<int>(logBuffer.size()))
+	if (selectedLogIndex >= 0 && std::cmp_less(selectedLogIndex, logBuffer.size()))
 	{
 		ImGui::SameLine();
 		ImGui::BeginChild("StackTracePanel", ImVec2(0, 0), true);

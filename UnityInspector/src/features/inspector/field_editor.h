@@ -57,7 +57,7 @@ private:
 
 	void RenderNestedInspector();
 
-	void RenderNestedFieldValue(UR::Field* field, void* instance);
+	void RenderNestedFieldValue(const UR::Field* field, void* instance) const;
 
 	static void ReadValueFromAddress(void* addr, const std::string& typeName, FieldEditorState& state);
 	static void WriteValueToAddress(void* addr, const std::string& typeName, const FieldEditorState& state);

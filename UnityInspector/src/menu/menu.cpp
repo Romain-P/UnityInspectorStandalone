@@ -6,10 +6,10 @@
 
 namespace Menu
 {
-	std::vector<std::unique_ptr<ITab>> s_Tabs;
-	bool s_Initialized = false;
+	static std::vector<std::unique_ptr<ITab>> s_Tabs;
+	static bool s_Initialized = false;
 
-	void Menu::Init()
+	void Init()
 	{
 		if (s_Initialized) return;
 		s_Tabs.push_back(std::make_unique<InfoTab>());
@@ -17,7 +17,7 @@ namespace Menu
 		s_Initialized = true;
 	}
 
-	void Menu::Render()
+	void Render()
 	{
 		if (!s_Initialized) Init();
 
@@ -27,9 +27,9 @@ namespace Menu
 			ImGui::SetNextWindowPos(ImVec2(600, 400), ImGuiCond_FirstUseEver);
 
 #ifdef _DEBUG
-			const char* menuTitle = "UnityInspector (Debug)";
+			const auto menuTitle = "UnityInspector (Debug)";
 #else
-			const char* menuTitle = "UnityInspector (Release)";
+			const auto menuTitle = "UnityInspector (Release)";
 #endif
 
 			ImGui::Begin(menuTitle, &Config::state.showMenu, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoResize);

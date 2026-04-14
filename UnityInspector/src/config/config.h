@@ -33,20 +33,20 @@ struct UserSettings
 	{
 		char buffer[MAX_PATH];
 		GetModuleFileNameA(nullptr, buffer, MAX_PATH);
-		auto configPath = std::filesystem::path(buffer).parent_path() / "config.ini";
+		const auto configPath = std::filesystem::path(buffer).parent_path() / "config.ini";
 
 		if (!std::filesystem::exists(configPath)) return;
 
 		ini::IniFile configFile;
 		configFile.load(configPath.string());
 
-		if (configFile.count("Config"))
+		if (configFile.contains("Config"))
 		{
 			auto& c = configFile["Config"];
-			if (c.count("debug_console"))    ini.debug_console = c["debug_console"].as<bool>();
-			if (c.count("avoid_quiting"))     ini.avoid_quiting = c["avoid_quiting"].as<bool>();
-			if (c.count("internal_overlay"))  ini.internal_overlay = c["internal_overlay"].as<bool>();
-			if (c.count("external_overlay"))  ini.external_overlay = c["external_overlay"].as<bool>();
+			if (c.contains("debug_console"))    ini.debug_console = c["debug_console"].as<bool>();
+			if (c.contains("avoid_quiting"))     ini.avoid_quiting = c["avoid_quiting"].as<bool>();
+			if (c.contains("internal_overlay"))  ini.internal_overlay = c["internal_overlay"].as<bool>();
+			if (c.contains("external_overlay"))  ini.external_overlay = c["external_overlay"].as<bool>();
 		}
 	}
 };

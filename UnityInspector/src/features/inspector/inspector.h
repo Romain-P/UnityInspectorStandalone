@@ -131,10 +131,10 @@ private:
 	void RenderMethodInvokePopup();
 	void DrawSelectedObjectBoundingBox() const;
 
-	bool PassesComponentFilter(const std::string& componentName, const char* searchBuffer) const;
-	bool PassesFieldFilter(const ComponentFieldInfo& field, const char* searchBuffer, bool editableOnly, bool staticOnly, bool instanceOnly) const;
-	bool PassesPropertyFilter(const ComponentPropertyInfo& prop, const char* searchBuffer, bool editableOnly) const;
-	bool PassesMethodFilter(const ComponentMethodInfo& method, const char* searchBuffer, bool staticOnly, bool instanceOnly) const;
+	bool PassesComponentFilter(const std::string& componentName, const char* pSearchBuffer) const;
+	bool PassesFieldFilter(const ComponentFieldInfo& field, const char* pSearchBuffer, bool editableOnly, bool staticOnly, bool instanceOnly) const;
+	bool PassesPropertyFilter(const ComponentPropertyInfo& prop, const char* pSearchBuffer, bool editableOnly) const;
+	bool PassesMethodFilter(const ComponentMethodInfo& method, const char* pSearchBuffer, bool staticOnly, bool instanceOnly) const;
 
 	std::string GetComponentTypeName(UT::Component* component) const;
 	std::string GetComponentFullTypeName(UT::Component* component) const;

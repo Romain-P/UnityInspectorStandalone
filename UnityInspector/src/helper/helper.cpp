@@ -48,7 +48,7 @@ namespace Helper
 		}
 	}
 
-	bool SafeSetActive(GameObject* obj, bool value)
+	bool SafeSetActive(const GameObject* obj, bool value)
 	{
 		if (!obj) return false;
 

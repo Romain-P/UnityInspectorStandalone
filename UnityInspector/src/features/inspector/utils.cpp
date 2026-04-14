@@ -59,7 +59,7 @@ std::vector<ComponentFieldInfo> Inspector::GetComponentFields(UT::Component* com
 		void* iter = nullptr;
 		void* field;
 
-		while ((field = UR::Invoke<void*, void*, void*>(API("class_get_fields"), currentClass, &iter)))
+		while ((field = UR::Invoke<void*, void*, void*>(API("class_get_fields"), currentClass, iter)))
 		{
 			ComponentFieldInfo info;
 			info.fieldHandle = field;
@@ -70,7 +70,7 @@ std::vector<ComponentFieldInfo> Inspector::GetComponentFields(UT::Component* com
 
 			info.offset = UR::Invoke<int, void*>(API("field_get_offset"), field);
 
-			int flags = UR::Invoke<int, void*>(API("field_get_flags"), field);
+			const int flags = UR::Invoke<int, void*>(API("field_get_flags"), field);
 			info.isStatic = (flags & 0x10) != 0;
 
 			if (void* fieldType = UR::Invoke<void*, void*>(API("field_get_type"), field))
@@ -109,7 +109,7 @@ std::vector<ComponentPropertyInfo> Inspector::GetComponentProperties(UT::Compone
 		void* iter = nullptr;
 		void* prop;
 
-		while ((prop = UR::Invoke<void*, void*, void*>(API("class_get_properties"), currentClass, &iter)))
+		while ((prop = UR::Invoke<void*, void*, void*>(API("class_get_properties"), currentClass, iter)))
 		{
 			ComponentPropertyInfo info;
 
@@ -167,7 +167,7 @@ std::vector<ComponentMethodInfo> Inspector::GetComponentMethods(UT::Component* c
 		void* iter = nullptr;
 		void* method;
 
-		while ((method = UR::Invoke<void*, void*, void*>(API("class_get_methods"), currentClass, &iter)))
+		while ((method = UR::Invoke<void*, void*, void*>(API("class_get_methods"), currentClass, iter)))
 		{
 			ComponentMethodInfo info;
 			info.methodHandle = method;
@@ -195,8 +195,7 @@ std::vector<ComponentMethodInfo> Inspector::GetComponentMethods(UT::Component* c
 					info.returnTypeName = "void";
 				}
 
-				int paramCount = UR::Invoke<int, void*>("mono_signature_get_param_count", signature);
-				if (paramCount > 0)
+				if (int paramCount = UR::Invoke<int, void*>("mono_signature_get_param_count", signature); paramCount > 0)
 				{
 					std::vector<char*> paramNames(paramCount);
 					UR::Invoke<void, void*, char**>("mono_method_get_param_names", method, paramNames.data());
@@ -204,7 +203,7 @@ std::vector<ComponentMethodInfo> Inspector::GetComponentMethods(UT::Component* c
 					void* mIter = nullptr;
 					void* mType;
 					int paramIndex = 0;
-					while (((mType = UR::Invoke<void*, void*, void*>("mono_signature_get_params", signature, &mIter))) && paramIndex < paramCount)
+					while (((mType = UR::Invoke<void*, void*, void*>("mono_signature_get_params", signature, mIter))) && paramIndex < paramCount)
 					{
 						const char* paramTypeName = UR::Invoke<const char*, void*>("mono_type_get_name", mType);
 						std::string pName = (std::cmp_less(paramIndex, static_cast<int>(paramNames.size())) && paramNames[paramIndex])
@@ -344,8 +343,7 @@ void Inspector::BuildHierarchyNode(HierarchyNode& node, UT::Transform* transform
 
 	for (int i = 0; i < childCount; i++)
 	{
-		UT::Transform* child = nullptr;
-		if (Helper::SafeGetChild(transform, i, child) && child)
+		if (UT::Transform* child = nullptr; Helper::SafeGetChild(transform, i, child) && child)
 		{
 			HierarchyNode childNode;
 			BuildHierarchyNode(childNode, child);
@@ -366,8 +364,7 @@ void Inspector::RefreshHierarchy()
 
 	const auto transformClass = assembly->Get("Transform", "UnityEngine");
 	if (!transformClass) return;
-	std::vector<UT::Transform*> transforms;
-	transforms = transformClass->FindObjectsByType<UT::Transform*>();
+	std::vector<UT::Transform*> transforms = transformClass->FindObjectsByType<UT::Transform*>();
 	if (transforms.empty())
 	{
 		transforms = transformClass->FindObjectsOfType<UT::Transform*>();
@@ -439,24 +436,24 @@ void Inspector::RefreshTabData(InspectedObjectTab& tab) const
 	}
 }
 
-bool Inspector::PassesComponentFilter(const std::string& componentName, const char* searchBuffer) const
+bool Inspector::PassesComponentFilter(const std::string& componentName, const char* pSearchBuffer) const
 {
-	if (!searchBuffer || searchBuffer[0] == '\0') return true;
+	if (!pSearchBuffer || pSearchBuffer[0] == '\0') return true;
 
 	std::string lowerName = componentName;
-	std::string lowerSearch = searchBuffer;
+	std::string lowerSearch = pSearchBuffer;
 	std::ranges::transform(lowerName, lowerName.begin(), ::tolower);
 	std::ranges::transform(lowerSearch, lowerSearch.begin(), ::tolower);
 
 	return lowerName.find(lowerSearch) != std::string::npos;
 }
 
-bool Inspector::PassesFieldFilter(const ComponentFieldInfo& field, const char* searchBuffer, const bool editableOnly, const bool staticOnly, const bool instanceOnly) const
+bool Inspector::PassesFieldFilter(const ComponentFieldInfo& field, const char* pSearchBuffer, const bool editableOnly, const bool staticOnly, const bool instanceOnly) const
 {
-	if (searchBuffer && searchBuffer[0] != '\0')
+	if (pSearchBuffer && pSearchBuffer[0] != '\0')
 	{
 		std::string lowerName = field.name;
-		std::string lowerSearch = searchBuffer;
+		std::string lowerSearch = pSearchBuffer;
 		std::ranges::transform(lowerName, lowerName.begin(), ::tolower);
 		std::ranges::transform(lowerSearch, lowerSearch.begin(), ::tolower);
 
@@ -476,12 +473,12 @@ bool Inspector::PassesFieldFilter(const ComponentFieldInfo& field, const char* s
 	return true;
 }
 
-bool Inspector::PassesPropertyFilter(const ComponentPropertyInfo& prop, const char* searchBuffer, const bool editableOnly) const
+bool Inspector::PassesPropertyFilter(const ComponentPropertyInfo& prop, const char* pSearchBuffer, const bool editableOnly) const
 {
-	if (searchBuffer && searchBuffer[0] != '\0')
+	if (pSearchBuffer && pSearchBuffer[0] != '\0')
 	{
 		std::string lowerName = prop.name;
-		std::string lowerSearch = searchBuffer;
+		std::string lowerSearch = pSearchBuffer;
 		std::ranges::transform(lowerName, lowerName.begin(), ::tolower);
 		std::ranges::transform(lowerSearch, lowerSearch.begin(), ::tolower);
 
@@ -495,12 +492,12 @@ bool Inspector::PassesPropertyFilter(const ComponentPropertyInfo& prop, const ch
 	return true;
 }
 
-bool Inspector::PassesMethodFilter(const ComponentMethodInfo& method, const char* searchBuffer, const bool staticOnly, const bool instanceOnly) const
+bool Inspector::PassesMethodFilter(const ComponentMethodInfo& method, const char* pSearchBuffer, const bool staticOnly, const bool instanceOnly) const
 {
-	if (searchBuffer && searchBuffer[0] != '\0')
+	if (pSearchBuffer && pSearchBuffer[0] != '\0')
 	{
 		std::string lowerName = method.name;
-		std::string lowerSearch = searchBuffer;
+		std::string lowerSearch = pSearchBuffer;
 		std::ranges::transform(lowerName, lowerName.begin(), ::tolower);
 		std::ranges::transform(lowerSearch, lowerSearch.begin(), ::tolower);
 

@@ -39,7 +39,6 @@
 
 #if WINDOWS_MODE || LINUX_MODE || IOS_MODE
 #include <format>
-#include <ranges>
 #include <regex>
 #endif
 
@@ -47,11 +46,9 @@
 #include <algorithm>
 #endif
 
-#include <codecvt>
 #include <fstream>
 #include <iostream>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -159,7 +156,7 @@ public:
 		auto SetValue(void* obj, const std::string& name, RType value) -> void { *reinterpret_cast<RType*>(reinterpret_cast<uintptr_t>(obj) + Get<Field>(name)->offset) = value; }
 
 		template <typename RType>
-		auto SetValue(void* obj, unsigned int offset, RType value) -> RType { *reinterpret_cast<RType*>(reinterpret_cast<uintptr_t>(obj) + offset) = value; }
+		auto SetValue(void* obj, unsigned int offset, RType value) -> void { *reinterpret_cast<RType*>(reinterpret_cast<uintptr_t>(obj) + offset) = value; }
 
 		// UnityType::CsType*
 		[[nodiscard]] auto GetType() -> void* {
@@ -230,23 +227,16 @@ public:
 		auto SetStaticValue(T* value) const -> void {
 			if (!static_field) return;
 			if (mode_ == Mode::Il2Cpp) return Invoke<void, void*, T*>("il2cpp_field_static_set_value", address, value);
-			else
-			{
-				void* VTable = Invoke<void*>("mono_class_vtable", pDomain, klass->address);
-				return Invoke<void, void*, void*, T*>("mono_field_static_set_value", VTable, address, value);
-
-			}
+			const auto VTable = Invoke<void*>("mono_class_vtable", pDomain, klass->address);
+			return Invoke<void, void*, void*, T*>("mono_field_static_set_value", VTable, address, value);
 		}
 
 		template <typename T>
 		auto GetStaticValue(T* value) const -> void {
 			if (!static_field) return;
 			if (mode_ == Mode::Il2Cpp) return Invoke<void, void*, T*>("il2cpp_field_static_get_value", address, value);
-			else
-			{
-				void* VTable = Invoke<void*>("mono_class_vtable", pDomain, klass->address);
-				return Invoke<void, void*, void*, T*>("mono_field_static_get_value", VTable, address, value);
-			}
+			const auto VTable = Invoke<void*>("mono_class_vtable", pDomain, klass->address);
+			return Invoke<void, void*, void*, T*>("mono_field_static_get_value", VTable, address, value);
 		}
 
 		template <typename T, typename C>
@@ -291,7 +281,7 @@ public:
 		};
 
 		std::vector<std::unique_ptr<Arg>> args;
-	public:
+
 		template <typename Return, typename... Args>
 		auto Invoke(Args... args) -> Return {
 
@@ -375,15 +365,13 @@ public:
 			if (mode_ == Mode::Il2Cpp) {
 				return static_cast<T>(Invoke<void*>("il2cpp_object_unbox", obj));
 			}
-			else {
-				return static_cast<T>(Invoke<void*>("mono_object_unbox", obj));
-			}
+			return static_cast<T>(Invoke<void*>("mono_object_unbox", obj));
 		}
 	};
 
 	class AssemblyLoad {
 	public:
-		AssemblyLoad(const std::string path, std::string namespaze = "", std::string className = "", std::string desc = "") {
+		explicit AssemblyLoad(const std::string& path, std::string namespaze = "", std::string className = "", std::string desc = "") {
 			if (mode_ == Mode::Mono) {
 				assembly = Invoke<void*>("mono_domain_assembly_open", pDomain, path.data());
 				image = Invoke<void*>("mono_assembly_get_image", assembly);
@@ -391,7 +379,7 @@ public:
 					return;
 				}
 				klass = Invoke<void*>("mono_class_from_name", image, namespaze.data(), className.data());
-				void* entry_point_method_desc = Invoke<void*>("mono_method_desc_new", desc.data(), true);
+				const auto entry_point_method_desc = Invoke<void*>("mono_method_desc_new", desc.data(), true);
 				method = Invoke<void*>("mono_method_desc_search_in_class", entry_point_method_desc, klass);
 				Invoke<void>("mono_method_desc_free", entry_point_method_desc);
 				Invoke<void*>("mono_runtime_invoke", method, nullptr, nullptr, nullptr);
@@ -449,7 +437,7 @@ public:
 	}
 
 #if WINDOWS_MODE || LINUX_MODE || IOS_MODE /*__cplusplus >= 202002L*/
-	static auto DumpToFile(const std::string path) -> void {
+	static auto DumpToFile(const std::string& path) -> void {
 		std::ofstream io(path + "dump.cs", std::fstream::out);
 		if (!io) return;
 
@@ -680,7 +668,6 @@ public:
 
 private:
 	static auto ForeachAssembly() -> void {
-		// 遍历程序集
 		if (mode_ == Mode::Il2Cpp) {
 			size_t     nrofassemblies = 0;
 			const auto assemblies = Invoke<void**>("il2cpp_domain_get_assemblies", pDomain, &nrofassemblies);
@@ -701,25 +688,20 @@ private:
 					if (ptr == nullptr) return;
 
 					auto assembly = std::make_unique<Assembly>(Assembly{ .address = ptr });
-					void* image;
 					try {
-						image = Invoke<void*>("mono_assembly_get_image", ptr);
+						const auto image = Invoke<void*>("mono_assembly_get_image", ptr);
 						assembly->file = Invoke<const char*>("mono_image_get_filename", image);
 						assembly->name = Invoke<const char*>("mono_image_get_name", image);
 						assembly->name += ".dll";
 						ForeachClass(assembly.get(), image);
 						v.push_back(std::move(assembly));
 					}
-					catch (...) {
-						return;
-					}
-				},
-				assembly);
+					catch (...) {}
+				}, assembly);
 		}
 	}
 
 	static auto ForeachClass(Assembly* assembly, void* image) -> void {
-		// 遍历类
 		if (mode_ == Mode::Il2Cpp) {
 			const auto count = Invoke<int>("il2cpp_image_get_class_count", image);
 			for (auto i = 0; i < count; i++) {
@@ -796,7 +778,7 @@ private:
 				if ((field = Invoke<void*>("il2cpp_class_get_fields", pKlass, &iter))) {
 					auto pField = std::make_unique<Field>(Field{ .address = field, .name = Invoke<const char*>("il2cpp_field_get_name", field), .type = std::make_unique<Type>(Type{.address = Invoke<void*>("il2cpp_field_get_type", field)}), .klass = klass, .offset = Invoke<int>("il2cpp_field_get_offset", field), .static_field = false, .vTable = nullptr });
 					pField->static_field = pField->offset <= 0;
-					char* name = Invoke<char*>("il2cpp_type_get_name", pField->type->address);
+					const auto name = Invoke<char*>("il2cpp_type_get_name", pField->type->address);
 					pField->type->name = name;
 					Invoke<void>("il2cpp_free", name);
 					pField->type->size = -1;
@@ -812,9 +794,7 @@ private:
 					if ((field = Invoke<void*>("mono_class_get_fields", pKlass, &iter))) {
 						auto pField = std::make_unique<Field>(Field{ .address = field, .name = Invoke<const char*>("mono_field_get_name", field), .type = std::make_unique<Type>(Type{.address = Invoke<void*>("mono_field_get_type", field)}), .klass = klass, .offset = Invoke<int>("mono_field_get_offset", field), .static_field = false, .vTable = nullptr });
 						int        tSize{};
-						/*pField->static_field = pField->offset <= 0;*/
-						int flags = Invoke<int>("mono_field_get_flags", field);
-						if (flags & 0x10)//0x10=FIELD_ATTRIBUTE_STATIC
+						if (const int flags = Invoke<int>("mono_field_get_flags", field); flags & 0x10)
 						{
 							pField->static_field = true;
 						}
@@ -845,7 +825,7 @@ private:
 					pMethod->flags = Invoke<int>("il2cpp_method_get_flags", method, &fFlags);
 
 					pMethod->static_function = pMethod->flags & 0x10;
-					char* name = Invoke<char*>("il2cpp_type_get_name", pMethod->return_type->address);
+					const auto name = Invoke<char*>("il2cpp_type_get_name", pMethod->return_type->address);
 					pMethod->return_type->name = name;
 					Invoke<void>("il2cpp_free", name);
 					pMethod->return_type->size = -1;
@@ -857,7 +837,7 @@ private:
 						{
 							auto pType = std::make_unique<Type>();
 							pType->address = Invoke<void*>("il2cpp_method_get_param", method, index);
-							char* type_name = Invoke<char*>("il2cpp_type_get_name", pType->address);
+							const auto type_name = Invoke<char*>("il2cpp_type_get_name", pType->address);
 							pType->name = type_name;
 							Invoke<void>("il2cpp_free", type_name);
 							pType->size = -1;
@@ -896,7 +876,7 @@ private:
 							int tSize{};
 							pMethod->return_type->size = Invoke<int>("mono_type_size", pMethod->return_type->address, &tSize);
 
-							int param_count = Invoke<int>("mono_signature_get_param_count", signature);
+							const int param_count = Invoke<int>("mono_signature_get_param_count", signature);
 							names.resize(param_count);
 							Invoke<void>("mono_method_get_param_names", method, names.data());
 						}
@@ -1056,7 +1036,7 @@ public:
 				}
 			}
 
-			[[nodiscard]] auto Distance(Vector3& event) const -> float {
+			[[nodiscard]] auto Distance(const Vector3& event) const -> float {
 				const auto dx = this->x - event.x;
 				const auto dy = this->y - event.y;
 				const auto dz = this->z - event.z;
@@ -1476,7 +1456,7 @@ public:
 
 #ifndef USE_GLM
 		struct Matrix4x4 {
-			float m[4][4] = { {0} };
+			float m[4][4] = { {} };
 
 			Matrix4x4() = default;
 
@@ -1578,7 +1558,7 @@ public:
 
 		};
 
-		struct FieldInfo : public MemberInfo {
+		struct FieldInfo : MemberInfo {
 			auto GetIsInitOnly() -> bool {
 
 				static Method* method;
@@ -2255,7 +2235,7 @@ public:
 			}
 		};
 
-		struct Component : public UnityObject {
+		struct Component : UnityObject {
 			auto GetTransform() -> Transform* {
 
 				static Method* method;
@@ -2743,9 +2723,9 @@ public:
 		struct GameObject : UnityObject {
 
 			static auto Create(const std::string& name) -> GameObject* {
-				auto klass = Get("UnityEngine.CoreModule.dll")->Get("GameObject");
+				const auto klass = Get("UnityEngine.CoreModule.dll")->Get("GameObject");
 				if (!klass) return nullptr;
-				auto obj = klass->New<GameObject>();
+				const auto obj = klass->New<GameObject>();
 				if (!obj) return nullptr;
 				static Method* method;
 				if (!method) method = klass->Get<Method>("Internal_CreateGameObject");
@@ -2952,7 +2932,7 @@ public:
 		};
 
 		struct Collider : Component {
-			auto GetBounds() -> Bounds {
+			auto GetBounds() const -> Bounds {
 
 				static Method* method;
 				if (!method) method = Get("UnityEngine.PhysicsModule.dll")->Get("Collider")->Get<Method>("get_bounds_Injected");
@@ -2966,7 +2946,7 @@ public:
 		};
 
 		struct Mesh : UnityObject {
-			auto GetBounds() -> Bounds {
+			auto GetBounds() const -> Bounds {
 
 				static Method* method;
 				if (!method) method = Get("UnityEngine.CoreModule.dll")->Get("Mesh")->Get<Method>("get_bounds_Injected");
@@ -3083,7 +3063,7 @@ public:
 			}
 		};
 
-		struct Behaviour : public Component {
+		struct Behaviour : Component {
 			auto GetEnabled() -> bool {
 
 				static Method* method;
@@ -3100,9 +3080,9 @@ public:
 			}
 		};
 
-		struct MonoBehaviour : public Behaviour {};
+		struct MonoBehaviour : Behaviour {};
 
-		struct Light : public Behaviour {
+		struct Light : Behaviour {
 			int m_BakedIndex;
 
 			static auto FindAll() -> std::vector<Light*> {
@@ -3242,7 +3222,7 @@ public:
 			}
 		};
 
-		struct Sprite : public Object {
+		struct Sprite : Object {
 			auto GetBounds() -> Bounds {
 				static Method* method;
 				if (!method) method = Get("UnityEngine.CoreModule.dll")->Get("Sprite", "UnityEngine")->Get<Method>("get_bounds");
@@ -3321,7 +3301,7 @@ public:
 			}
 		};
 
-		struct Shader : public Object {
+		struct Shader : Object {
 			static auto Find(const std::string& name) -> Shader* {
 				static Method* method;
 				if (!method) method = Get("UnityEngine.CoreModule.dll")->Get("Shader", "UnityEngine")->Get<Method>("Find", { "System.String" });
@@ -3402,7 +3382,7 @@ public:
 			}
 		};
 
-		struct Material : public Object {
+		struct Material : Object {
 			auto GetShader() -> Shader* {
 				static Method* method;
 				if (!method) method = Get("UnityEngine.CoreModule.dll")->Get("Material", "UnityEngine")->Get<Method>("get_shader");
@@ -3479,7 +3459,7 @@ public:
 			}
 		};
 
-		struct Texture : public Object {
+		struct Texture : Object {
 			auto GetWidth() -> int {
 				static Method* method;
 				if (!method) method = Get("UnityEngine.CoreModule.dll")->Get("Texture", "UnityEngine")->Get<Method>("get_width");
@@ -3535,27 +3515,27 @@ public:
 			}
 		};
 
-		struct Texture2D : public Texture {
+		struct Texture2D : Texture {
 			static auto New(int width, int height, int textureFormat, bool mipChain) -> Texture2D* {
-				auto pTexture2DClass = Get("UnityEngine.CoreModule.dll")->Get("Texture2D", "UnityEngine");
+				const auto pTexture2DClass = Get("UnityEngine.CoreModule.dll")->Get("Texture2D", "UnityEngine");
 				if (!pTexture2DClass) return nullptr;
 
-				auto pConstructor = pTexture2DClass->Get<Method>(".ctor", { "System.Int32", "System.Int32", "UnityEngine.TextureFormat", "System.Boolean" });
+				const auto pConstructor = pTexture2DClass->Get<Method>(".ctor", { "System.Int32", "System.Int32", "UnityEngine.TextureFormat", "System.Boolean" });
 				if (!pConstructor) return nullptr;
 
-				auto newTexture = pTexture2DClass->New<Texture2D>();
+				const auto newTexture = pTexture2DClass->New<Texture2D>();
 				pConstructor->Invoke<void>(newTexture, width, height, textureFormat, mipChain);
 				return newTexture;
 			}
 
 			static auto New(int width, int height) -> Texture2D* {
-				auto pTexture2DClass = Get("UnityEngine.CoreModule.dll")->Get("Texture2D", "UnityEngine");
+				const auto pTexture2DClass = Get("UnityEngine.CoreModule.dll")->Get("Texture2D", "UnityEngine");
 				if (!pTexture2DClass) return nullptr;
 
-				auto pConstructor = pTexture2DClass->Get<Method>(".ctor", { "System.Int32", "System.Int32" });
+				const auto pConstructor = pTexture2DClass->Get<Method>(".ctor", { "System.Int32", "System.Int32" });
 				if (!pConstructor) return nullptr;
 
-				auto newTexture = pTexture2DClass->New<Texture2D>();
+				const auto newTexture = pTexture2DClass->New<Texture2D>();
 				pConstructor->Invoke<void>(newTexture, width, height);
 				return newTexture;
 			}

@@ -154,6 +154,7 @@
     <ClInclude Include="library\ini\inicpp.h" />
     <ClInclude Include="src\features\features.h" />
     <ClInclude Include="src\config\config.h" />
+    <ClInclude Include="src\features\inspector\editable_type.h" />
     <ClInclude Include="src\features\tests\tests.h" />
     <ClInclude Include="src\features\debug_console\debug_console.h" />
     <ClInclude Include="src\features\inspector\inspector.h" />

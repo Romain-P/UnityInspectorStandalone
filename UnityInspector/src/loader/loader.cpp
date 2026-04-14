@@ -11,7 +11,7 @@
 
 namespace Loader
 {
-	DWORD WINAPI OverlayInitThread(LPVOID)
+	static DWORD WINAPI OverlayInitThread(LPVOID)
 	{
 		if (!Config::settings.ini.internal_overlay && !Config::settings.ini.external_overlay)
 			return NULL;
@@ -68,20 +68,20 @@ namespace Loader
 		return NULL;
 	}
 
-	DWORD WINAPI LoaderThread(LPVOID)
+	static DWORD WINAPI LoaderThread(LPVOID)
 	{
 		while (!WindowFinder::FindGameWindow()) Sleep(100);
 
 		do
 		{
-			if (auto module = GetModuleHandleA("GameAssembly.dll"); module)
+			if (const auto module = GetModuleHandleA("GameAssembly.dll"); module)
 			{
 				Config::state.unityMode = UR::Mode::Il2Cpp;
 				Config::state.gameHandle = module;
 				break;
 			}
 
-			if (auto module = GetModuleHandleA("mono-2.0-bdwgc.dll"); module)
+			if (const auto module = GetModuleHandleA("mono-2.0-bdwgc.dll"); module)
 			{
 				Config::state.unityMode = UR::Mode::Mono;
 				Config::state.gameHandle = module;

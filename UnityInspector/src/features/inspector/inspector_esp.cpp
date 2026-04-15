@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "inspector.h"
 
 void Inspector::DrawSelectedObjectBoundingBox() const
@@ -24,4 +24,36 @@ void Inspector::DrawSelectedObjectBoundingBox() const
 	constexpr float radius = 10.0f;
 
 	drawList->AddCircle(ImVec2(screenPos.x, screenPos.y), radius, redColor, 0, 2.0f);
+}
+
+void Inspector::ProcessObjectPicker()
+{
+	if (!Config::settings.inspector.objectPickerEnabled) return;
+
+	UR::ThreadAttach();
+
+	if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+	{
+		Config::settings.inspector.objectPickerEnabled = false;
+		return;
+	}
+
+	const auto& io = ImGui::GetIO();
+	if (!io.MouseDrawCursor) return;
+
+	if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+	{
+		if (ImGui::GetIO().WantCaptureMouse) return;
+
+		ImVec2 mousePos = io.MousePos;
+		Vec2 screenPos = { mousePos.x, mousePos.y };
+
+		GameObject* hitObj = Helper::RaycastPick(screenPos);
+		if (hitObj)
+		{
+			RefreshHierarchy();
+			OpenObjectInNewTab(hitObj);
+			Config::settings.inspector.objectPickerEnabled = false;
+		}
+	}
 }

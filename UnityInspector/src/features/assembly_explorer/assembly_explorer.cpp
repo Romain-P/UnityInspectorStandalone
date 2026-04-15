@@ -6,7 +6,7 @@ REGISTER_FEATURE(AssemblyExplorer)
 
 void AssemblyExplorer::Update(const float deltaTime)
 {
-	if (const auto& [Enabled, AutoUpdateObject, AutoRefresh, ShowAssemblyExplorer, ShowDebugConsole] = Config::settings.inspector; !Enabled) return;
+	if (const auto& [Enabled, AutoUpdateObject, AutoRefresh, ShowAssemblyExplorer, ShowDebugConsole, ObjectPickerEnabled] = Config::settings.inspector; !Enabled) return;
 
 	if (!dataLoaded && !UR::assembly.empty())
 	{

@@ -31,6 +31,7 @@ struct UserSettings
 		bool autoRefresh = false;
 		bool showAssemblyExplorer = false;
 		bool showDebugConsole = false;
+		bool objectPickerEnabled = false;
 	} inspector;
 
 	void Load()

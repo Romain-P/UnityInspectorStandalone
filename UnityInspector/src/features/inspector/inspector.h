@@ -100,6 +100,8 @@ private:
 	std::deque<UT::GameObject*> recentSelections;
 	std::vector<UT::GameObject*> pinnedObjects;
 
+	bool objectPickerActive = false;
+
 	MethodInvokeState invokeState;
 
 	void RefreshHierarchy();
@@ -130,6 +132,7 @@ private:
 	void RenderMethodsSection(UT::Component* component, const std::vector<ComponentMethodInfo>& methods, InspectedObjectTab& tab, size_t componentIndex);
 	void RenderMethodInvokePopup();
 	void DrawSelectedObjectBoundingBox() const;
+	void ProcessObjectPicker();
 
 	bool PassesComponentFilter(const std::string& componentName, const char* pSearchBuffer) const;
 	bool PassesFieldFilter(const ComponentFieldInfo& field, const char* pSearchBuffer, bool editableOnly, bool staticOnly, bool instanceOnly) const;

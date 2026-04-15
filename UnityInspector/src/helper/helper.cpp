@@ -668,6 +668,21 @@ namespace Helper
 		}
 	}
 
+	bool SafeGetGameObject(Component* comp, GameObject*& outGameObject)
+	{
+		if (!comp) return false;
+		__try
+		{
+			outGameObject = comp->GetGameObject();
+			return outGameObject != nullptr;
+		}
+		__except (EXCEPTION_EXECUTE_HANDLER)
+		{
+			outGameObject = nullptr;
+			return false;
+		}
+	}
+
 	bool SafeGetGameObject(Rigidbody* rb, GameObject*& outGameObject)
 	{
 		if (!rb) return false;
@@ -846,5 +861,68 @@ namespace Helper
 		{
 			return false;
 		}
+	}
+
+	static Camera* SafeGetMainCamera()
+	{
+		__try
+		{
+			return Camera::GetMain();
+		}
+		__except (EXCEPTION_EXECUTE_HANDLER)
+		{
+			return nullptr;
+		}
+	}
+
+	static bool SafePhysicsRaycast(const Ray& ray, RaycastHit* hit, float maxDist)
+	{
+		__try
+		{
+			return Physics::Raycast(ray, hit, maxDist);
+		}
+		__except (EXCEPTION_EXECUTE_HANDLER)
+		{
+			return false;
+		}
+	}
+
+	static UnityObject* SafeFindObjectFromInstanceID(int32_t instanceID)
+	{
+		__try
+		{
+			return UnityObject::FindObjectFromInstanceID(instanceID);
+		}
+		__except (EXCEPTION_EXECUTE_HANDLER)
+		{
+			return nullptr;
+		}
+	}
+
+	GameObject* RaycastPick(const Vec2& screenPos)
+	{
+		const auto camera = SafeGetMainCamera();
+		if (!camera) return nullptr;
+
+		ImVec2 screenSize = ImGui::GetIO().DisplaySize;
+		Vec2 unityScreenPos = { screenPos.x, screenSize.y - screenPos.y };
+
+		Ray ray = camera->ScreenPointToRay(unityScreenPos);
+
+		RaycastHit hit{};
+		if (!SafePhysicsRaycast(ray, &hit, 1000.0f)) return nullptr;
+		if (hit.m_Collider == 0) return nullptr;
+
+		auto* obj = SafeFindObjectFromInstanceID(hit.m_Collider);
+		if (!obj) return nullptr;
+
+		GameObject* go = nullptr;
+		auto* collider = reinterpret_cast<Collider*>(obj);
+		if (SafeGetGameObject(collider, go) && go) return go;
+
+		auto* comp = reinterpret_cast<Component*>(obj);
+		if (SafeGetGameObject(comp, go) && go) return go;
+
+		return nullptr;
 	}
 }

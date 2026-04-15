@@ -5,7 +5,7 @@ REGISTER_FEATURE(Inspector)
 
 void Inspector::Update(const float deltaTime)
 {
-	const auto& [Enabled, AutoUpdateObject, AutoRefresh, ShowAssemblyExplorer, ShowDebugConsole] = Config::settings.inspector;
+	const auto& [Enabled, AutoUpdateObject, AutoRefresh, ShowAssemblyExplorer, ShowDebugConsole, ObjectPickerEnabled] = Config::settings.inspector;
 	if (!Enabled || !Config::state.showMenu) return;
 
 	UR::ThreadAttach();
@@ -54,6 +54,21 @@ void Inspector::Render()
 		ImGui::SameLine();
 		ImGui::TextDisabled("| %zu", rootNodes.size());
 
+		ImGui::SameLine();
+		{
+			const bool pickerActive = Config::settings.inspector.objectPickerEnabled;
+			if (pickerActive)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 0.15f, 0.15f, 1.0f));
+			}
+			if (ImGui::SmallButton(pickerActive ? "Pick: ON" : "Pick"))
+				Config::settings.inspector.objectPickerEnabled = !Config::settings.inspector.objectPickerEnabled;
+			if (pickerActive)
+				ImGui::PopStyleColor(3);
+		}
+
 		ImGui::PushItemWidth(-1);
 		ImGui::InputTextWithHint("##Search", "Search...", searchBuffer, sizeof(searchBuffer),
 			ImGuiInputTextFlags_EscapeClearsAll);
@@ -90,4 +105,5 @@ void Inspector::Render()
 
 	RenderDetailsWindow();
 	DrawSelectedObjectBoundingBox();
+	ProcessObjectPicker();
 }

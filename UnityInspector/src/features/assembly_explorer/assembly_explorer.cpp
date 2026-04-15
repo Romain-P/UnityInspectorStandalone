@@ -465,6 +465,13 @@ void AssemblyExplorer::RenderClassNode(AssemblyClassInfo& classInfo)
 		{
 			ImGui::SetClipboardText(classInfo.name.c_str());
 		}
+		if (classInfo.classHandle && classInfo.classHandle->address)
+		{
+			char addrBuf[32];
+			snprintf(addrBuf, sizeof(addrBuf), "0x%llX", (unsigned long long)(uintptr_t)classInfo.classHandle->address);
+			if (ImGui::MenuItem("Copy Class Address"))
+				ImGui::SetClipboardText(addrBuf);
+		}
 		ImGui::EndPopup();
 	}
 
@@ -483,6 +490,14 @@ void AssemblyExplorer::RenderClassDetailsPanel()
 	}
 
 	UR::Class* klass = selectedClass->classHandle;
+
+	static uintptr_t s_moduleBase = 0;
+	if (!s_moduleBase)
+	{
+		HMODULE hMod = GetModuleHandleA("GameAssembly.dll");
+		if (!hMod) hMod = GetModuleHandleA("mono-2.0-bdwgc.dll");
+		if (hMod) s_moduleBase = (uintptr_t)hMod;
+	}
 
 	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.8f, 0.4f, 1.0f));
 	ImGui::Text("%s", selectedClass->name.c_str());
@@ -610,6 +625,7 @@ void AssemblyExplorer::RenderClassDetailsPanel()
 					bool isPointerType = FieldEditor::IsPointerType(field->type ? field->type->name : "");
 					bool showEdit = canEdit && (isEditableType || isPointerType);
 
+					ImGui::PushID(field.get());
 					ImGui::TableNextRow();
 
 					ImGui::TableSetColumnIndex(0);
@@ -619,6 +635,23 @@ void AssemblyExplorer::RenderClassDetailsPanel()
 					ImGui::PushStyleColor(ImGuiCol_Text, color);
 					ImGui::TextUnformatted(field->name.c_str());
 					ImGui::PopStyleColor();
+					if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+						ImGui::OpenPopup("##fctx");
+					if (ImGui::BeginPopup("##fctx"))
+					{
+						uintptr_t addr = 0;
+						if (isStatic)
+							addr = (uintptr_t)field->address;
+						else if (canEditInstance)
+							addr = (uintptr_t)selectedInstance->instance + (uintptr_t)field->offset;
+						char addrBuf[32];
+						snprintf(addrBuf, sizeof(addrBuf), "0x%llX", (unsigned long long)addr);
+						ImGui::TextDisabled("%s", addrBuf);
+						ImGui::Separator();
+						if (addr && ImGui::MenuItem("Copy Address"))
+							ImGui::SetClipboardText(addrBuf);
+						ImGui::EndPopup();
+					}
 
 					ImGui::TableSetColumnIndex(1);
 					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.7f, 0.5f, 1.0f));
@@ -630,6 +663,8 @@ void AssemblyExplorer::RenderClassDetailsPanel()
 					ImGui::TableSetColumnIndex(2);
 					if (!isStatic)
 						ImGui::TextDisabled("0x%X", field->offset);
+					else if (field->address && s_moduleBase)
+						ImGui::TextDisabled("0x%X", (uint32_t)((uintptr_t)field->address - s_moduleBase));
 					else
 						ImGui::TextDisabled("[S]");
 
@@ -637,7 +672,6 @@ void AssemblyExplorer::RenderClassDetailsPanel()
 					RenderFieldRow(field.get(), canEditInstance ? selectedInstance->instance : nullptr);
 
 					ImGui::TableSetColumnIndex(4);
-					ImGui::PushID(field.get());
 
 					if (!showEdit)
 					{
@@ -691,11 +725,12 @@ void AssemblyExplorer::RenderClassDetailsPanel()
 
 			bool canInvokeInstance = selectedInstance && selectedInstance->instance;
 
-			if (ImGui::BeginTable("MethodsTable", 5, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingFixedFit))
+			if (ImGui::BeginTable("MethodsTable", 6, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingFixedFit))
 			{
 				ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 140.0f);
 				ImGui::TableSetupColumn("Return Type", ImGuiTableColumnFlags_WidthFixed, 120.0f);
 				ImGui::TableSetupColumn("Parameters", ImGuiTableColumnFlags_WidthStretch);
+				ImGui::TableSetupColumn("RVA", ImGuiTableColumnFlags_WidthFixed, 90.0f);
 				ImGui::TableSetupColumn("Flags", ImGuiTableColumnFlags_WidthFixed, 40.0f);
 				ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 60.0f);
 
@@ -706,6 +741,7 @@ void AssemblyExplorer::RenderClassDetailsPanel()
 					bool isStatic = method->static_function;
 					bool canInvoke = isStatic || canInvokeInstance;
 
+					ImGui::PushID(method.get());
 					ImGui::TableNextRow();
 
 					ImGui::TableSetColumnIndex(0);
@@ -715,6 +751,25 @@ void AssemblyExplorer::RenderClassDetailsPanel()
 					ImGui::PushStyleColor(ImGuiCol_Text, color);
 					ImGui::TextUnformatted(method->name.c_str());
 					ImGui::PopStyleColor();
+					if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+						ImGui::OpenPopup("##mctx");
+					if (ImGui::BeginPopup("##mctx"))
+					{
+						char addrBuf[32];
+						snprintf(addrBuf, sizeof(addrBuf), "0x%llX", (unsigned long long)(uintptr_t)method->address);
+						ImGui::TextDisabled("%s", addrBuf);
+						ImGui::Separator();
+						if (ImGui::MenuItem("Copy Address"))
+							ImGui::SetClipboardText(addrBuf);
+						if (s_moduleBase && method->address)
+						{
+							char rvaBuf[32];
+							snprintf(rvaBuf, sizeof(rvaBuf), "0x%X", (uint32_t)((uintptr_t)method->address - s_moduleBase));
+							if (ImGui::MenuItem("Copy RVA"))
+								ImGui::SetClipboardText(rvaBuf);
+						}
+						ImGui::EndPopup();
+					}
 
 					ImGui::TableSetColumnIndex(1);
 					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.7f, 0.5f, 1.0f));
@@ -742,13 +797,25 @@ void AssemblyExplorer::RenderClassDetailsPanel()
 					}
 
 					ImGui::TableSetColumnIndex(3);
+					if (method->address && s_moduleBase)
+					{
+						uintptr_t rva = (uintptr_t)method->address - s_moduleBase;
+						ImGui::TextDisabled("0x%X", (uint32_t)rva);
+						if (ImGui::IsItemHovered())
+							ImGui::SetTooltip("Abs: 0x%llX", (unsigned long long)(uintptr_t)method->address);
+					}
+					else
+					{
+						ImGui::TextDisabled("N/A");
+					}
+
+					ImGui::TableSetColumnIndex(4);
 					std::string flags;
 					if (isStatic) flags += "S";
 					if (!flags.empty())
 						ImGui::TextDisabled("[%s]", flags.c_str());
 
-					ImGui::TableSetColumnIndex(4);
-					ImGui::PushID(method.get());
+					ImGui::TableSetColumnIndex(5);
 
 					if (!canInvoke)
 					{

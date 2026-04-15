@@ -773,11 +773,11 @@ namespace Helper
 		}
 	}
 
-	bool TryGetPosition(Transform* go, Vec3& pos)
+	bool TryGetPosition(Transform* go, Vec3& outPos)
 	{
 		__try
 		{
-			pos = go->GetPosition();
+			outPos = go->GetPosition();
 			return true;
 		}
 		__except (EXCEPTION_EXECUTE_HANDLER)

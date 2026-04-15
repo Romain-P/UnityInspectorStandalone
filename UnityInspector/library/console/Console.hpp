@@ -37,7 +37,7 @@ namespace console {
 	};
 
 	template<typename... Args>
-	static auto OutConsole(const OutType type, const std::string& format, const std::string& file, int line, Args&&... args) -> void {
+	auto OutConsole(const OutType type, const std::string& format, const std::string& file, int line, Args&&... args) -> void {
 		const auto hWnd_ = GetStdHandle(STD_OUTPUT_HANDLE);
 
 		std::string text;
@@ -94,7 +94,7 @@ namespace console {
 		std::cout << std::format("] :{}\n", text);
 	}
 
-	static auto StartConsole(const char* title, const bool close) -> HWND {
+	inline auto StartConsole(const char* title, const bool close) -> HWND {
 		HWND hWnd_ = nullptr;
 		AllocConsole();
 		SetConsoleTitleA(title);
@@ -109,7 +109,7 @@ namespace console {
 		return hWnd_;
 	}
 
-	static auto EndConsole() -> void {
+	inline auto EndConsole() -> void {
 		fclose(stdout);
 		fclose(stderr);
 		fclose(stdin);

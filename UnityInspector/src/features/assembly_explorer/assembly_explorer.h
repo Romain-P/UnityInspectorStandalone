@@ -56,7 +56,6 @@ private:
 
 	char assemblySearchBuffer[256] = {};
 	char classSearchBuffer[256] = {};
-	char instanceSearchBuffer[256] = {};
 
 	bool showDetailsPanel = true;
 	bool groupByNamespace = true;
@@ -88,9 +87,9 @@ private:
 
 	std::unique_ptr<FieldEditor> fieldEditor;
 
-	std::string FormatClassName(const std::string& name) const;
-	std::string FormatNamespaceName(const std::string& name) const;
-	ImVec4 GetClassColor(const AssemblyClassInfo& classInfo) const;
+	[[nodiscard]] std::string FormatClassName(const std::string& name) const;
+	[[nodiscard]] std::string FormatNamespaceName(const std::string& name) const;
+	[[nodiscard]] ImVec4 GetClassColor(const AssemblyClassInfo& classInfo) const;
 
 	struct AEMethodInvokeState {
 		bool showPopup = false;

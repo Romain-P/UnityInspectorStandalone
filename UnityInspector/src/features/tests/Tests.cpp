@@ -3,7 +3,7 @@
 
 REGISTER_FEATURE(Tests)
 
-void Tests::Update(float deltaTime)
+void Tests::Update(float)
 {
 
 }

@@ -1,7 +1,7 @@
 #pragma once
 #include "features/features.h"
 
-enum class LogType
+enum class LogType : uint8_t
 {
 	Log,
 	Warning,
@@ -18,8 +18,8 @@ struct LogEntry
 	LogType type;
 	float timestamp;
 
-	LogEntry(const std::string& msg, const std::string& trace, LogType t, float time, const std::string& src = "")
-		: message(msg), stackTrace(trace), source(src), type(t), timestamp(time) {
+	LogEntry(std::string msg, std::string trace, LogType t, float time, std::string src = "")
+		: message(std::move(msg)), stackTrace(std::move(trace)), source(std::move(src)), type(t), timestamp(time) {
 	}
 };
 
@@ -36,9 +36,9 @@ public:
 
 private:
 	static constexpr size_t MAX_LOGS = 1000;
-	static inline std::deque<LogEntry> logBuffer;
-	static inline std::mutex logMutex;
-	static inline float currentTime;
+	static std::deque<LogEntry> logBuffer;
+	static std::mutex logMutex;
+	static float currentTime;
 
 	bool showLog = true;
 	bool showWarning = true;
@@ -55,8 +55,8 @@ private:
 
 	void RenderConsoleWindow();
 	void RenderLogEntry(const LogEntry& entry, int index);
-	ImU32 GetLogColor(LogType type) const;
-	const char* GetLogTypeString(LogType type) const;
-	bool ShouldShowLogType(LogType type) const;
-	bool PassesFilter(const LogEntry& entry) const;
+	[[nodiscard]] ImU32 GetLogColor(LogType type) const;
+	[[nodiscard]] const char* GetLogTypeString(LogType type) const;
+	[[nodiscard]] bool ShouldShowLogType(LogType type) const;
+	[[nodiscard]] bool PassesFilter(const LogEntry& entry) const;
 };

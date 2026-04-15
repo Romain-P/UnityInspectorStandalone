@@ -29,7 +29,7 @@ public:
         HookClass##_Registrar() {                                         \
             Hooks::GetRegistry().push_back(                               \
                 []() -> std::unique_ptr<IHook> {                          \
-                    return std::make_unique<HookClass>();                  \
+                    return std::make_unique<HookClass>();                 \
                 });                                                       \
         }                                                                 \
     } s_##HookClass##_registrar;

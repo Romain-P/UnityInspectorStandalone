@@ -7,7 +7,7 @@
 
 namespace Input
 {
-	enum class InputAction
+	enum class InputAction : uint8_t
 	{
 		ToggleMenu,
 		ToggleCursor,

@@ -79,13 +79,13 @@ namespace dx_hook {
                     int a4,
                     __int64 a5
                     );
-                CreateHookFunc createHook = (CreateHookFunc)createHookAddr;
-                __int64 result = createHook(
-                    (unsigned __int64)presentAddr,
-                    (__int64)&SteamPresent,
-                    (unsigned __int64*)&oPresentSteam,
-                    1,
-                    (__int64)nullptr
+                const auto createHook = reinterpret_cast<CreateHookFunc>(createHookAddr);
+                createHook(
+	                static_cast<unsigned __int64>(presentAddr),
+	                reinterpret_cast<__int64>(&SteamPresent),
+	                reinterpret_cast<unsigned __int64*>(&oPresentSteam),
+	                1,
+	                reinterpret_cast<__int64>(nullptr)
                 );
                 return true;
             }
@@ -307,23 +307,22 @@ namespace dx_hook {
             return oPresentDiscord(pSwapChain, SyncInterval, Flags);
         }
 
-        static LRESULT CALLBACK NewWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+        static LRESULT CALLBACK NewWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             if (wndProc) {
-                LRESULT result = wndProc(hWnd, uMsg, wParam, lParam);
-                switch (result) {
-                case 0: return DefWindowProc(hWnd, uMsg, wParam, lParam);
-                case 1: return CallWindowProc(oldWndProc, hWnd, uMsg, wParam, lParam);
+	            switch (const LRESULT result = wndProc(hwnd, uMsg, wParam, lParam)) {
+                case 0: return DefWindowProc(hwnd, uMsg, wParam, lParam);
+                case 1: return CallWindowProc(oldWndProc, hwnd, uMsg, wParam, lParam);
                 case 2: return 0;
                 default: return result;
                 }
             }
-            return CallWindowProc(oldWndProc, hWnd, uMsg, wParam, lParam);
+            return CallWindowProc(oldWndProc, hwnd, uMsg, wParam, lParam);
         }
 
         static MODULEINFO GetModuleInfo(const char* moduleName)
         {
-            MODULEINFO modInfo = { 0 };
-            HMODULE hModule = GetModuleHandleA(moduleName);
+            MODULEINFO modInfo = { nullptr };
+            const HMODULE hModule = GetModuleHandleA(moduleName);
             if (!hModule)
                 return modInfo;
             GetModuleInformation(GetCurrentProcess(), hModule, &modInfo, sizeof(modInfo));

@@ -5,7 +5,7 @@ void Hooks::Init()
 {
 	for (auto& factory : GetRegistry())
 	{
-		auto hook = factory();
+		const auto hook = factory();
 		hook->Install();
 	}
 }

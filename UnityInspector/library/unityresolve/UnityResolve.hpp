@@ -674,12 +674,12 @@ private:
 			for (auto i = 0; i < nrofassemblies; i++) {
 				const auto ptr = assemblies[i];
 				if (ptr == nullptr) continue;
-				auto       assembly = std::make_unique<Assembly>(Assembly{ .address = ptr });
+				auto       pAssembly = std::make_unique<Assembly>(Assembly{ .address = ptr });
 				const auto image = Invoke<void*>("il2cpp_assembly_get_image", ptr);
-				assembly->file = Invoke<const char*>("il2cpp_image_get_filename", image);
-				assembly->name = Invoke<const char*>("il2cpp_image_get_name", image);
-				ForeachClass(assembly.get(), image);
-				UnityResolve::assembly.push_back(std::move(assembly));
+				pAssembly->file = Invoke<const char*>("il2cpp_image_get_filename", image);
+				pAssembly->name = Invoke<const char*>("il2cpp_image_get_name", image);
+				ForeachClass(pAssembly.get(), image);
+				assembly.push_back(std::move(pAssembly));
 			}
 		}
 		else {
@@ -701,7 +701,7 @@ private:
 		}
 	}
 
-	static auto ForeachClass(Assembly* assembly, void* image) -> void {
+	static auto ForeachClass(Assembly* pAssembly, void* image) -> void {
 		if (mode_ == Mode::Il2Cpp) {
 			const auto count = Invoke<int>("il2cpp_image_get_class_count", image);
 			for (auto i = 0; i < count; i++) {
@@ -724,7 +724,7 @@ private:
 						ForeachMethod(pAClass.get(), i_class);
 					}
 				} while (i_class);
-				assembly->classes.push_back(std::move(pAClass));
+				pAssembly->classes.push_back(std::move(pAClass));
 			}
 		}
 		else {
@@ -763,7 +763,7 @@ private:
 							return;
 						}
 					} while (iClass);
-					assembly->classes.push_back(std::move(pAClass));
+					pAssembly->classes.push_back(std::move(pAClass));
 				}
 			}
 			catch (...) {}
@@ -1043,63 +1043,63 @@ public:
 				return std::sqrt(dx * dx + dy * dy + dz * dz);
 			}
 
-			auto operator*(const float x) -> Vector3 {
-				this->x *= x;
-				this->y *= x;
-				this->z *= x;
+			auto operator*(const float f) -> Vector3 {
+				this->x *= f;
+				this->y *= f;
+				this->z *= f;
 				return *this;
 			}
 
-			auto operator-(const float x) -> Vector3 {
-				this->x -= x;
-				this->y -= x;
-				this->z -= x;
+			auto operator-(const float f) -> Vector3 {
+				this->x -= f;
+				this->y -= f;
+				this->z -= f;
 				return *this;
 			}
 
-			auto operator+(const float x) -> Vector3 {
-				this->x += x;
-				this->y += x;
-				this->z += x;
+			auto operator+(const float f) -> Vector3 {
+				this->x += f;
+				this->y += f;
+				this->z += f;
 				return *this;
 			}
 
-			auto operator/(const float x) -> Vector3 {
-				this->x /= x;
-				this->y /= x;
-				this->z /= x;
+			auto operator/(const float f) -> Vector3 {
+				this->x /= f;
+				this->y /= f;
+				this->z /= f;
 				return *this;
 			}
 
-			auto operator*(const Vector3 x) -> Vector3 {
-				this->x *= x.x;
-				this->y *= x.y;
-				this->z *= x.z;
+			auto operator*(const Vector3 vec3) -> Vector3 {
+				this->x *= vec3.x;
+				this->y *= vec3.y;
+				this->z *= vec3.z;
 				return *this;
 			}
 
-			auto operator-(const Vector3 x) -> Vector3 {
-				this->x -= x.x;
-				this->y -= x.y;
-				this->z -= x.z;
+			auto operator-(const Vector3 vec3) -> Vector3 {
+				this->x -= vec3.x;
+				this->y -= vec3.y;
+				this->z -= vec3.z;
 				return *this;
 			}
 
-			auto operator+(const Vector3 x) -> Vector3 {
-				this->x += x.x;
-				this->y += x.y;
-				this->z += x.z;
+			auto operator+(const Vector3 vec3) -> Vector3 {
+				this->x += vec3.x;
+				this->y += vec3.y;
+				this->z += vec3.z;
 				return *this;
 			}
 
-			auto operator/(const Vector3 x) -> Vector3 {
-				this->x /= x.x;
-				this->y /= x.y;
-				this->z /= x.z;
+			auto operator/(const Vector3 vec3) -> Vector3 {
+				this->x /= vec3.x;
+				this->y /= vec3.y;
+				this->z /= vec3.z;
 				return *this;
 			}
 
-			auto operator ==(const Vector3 x) const -> bool { return this->x == x.x && this->y == x.y && this->z == x.z; }
+			auto operator ==(const Vector3 vec3) const -> bool { return this->x == vec3.x && this->y == vec3.y && this->z == vec3.z; }
 		};
 #endif
 
@@ -1120,55 +1120,55 @@ public:
 				return std::sqrt(dx * dx + dy * dy);
 			}
 
-			auto operator*(const float x) -> Vector2 {
-				this->x *= x;
-				this->y *= x;
+			auto operator*(const float f) -> Vector2 {
+				this->x *= f;
+				this->y *= f;
 				return *this;
 			}
 
-			auto operator/(const float x) -> Vector2 {
-				this->x /= x;
-				this->y /= x;
+			auto operator/(const float f) -> Vector2 {
+				this->x /= f;
+				this->y /= f;
 				return *this;
 			}
 
-			auto operator+(const float x) -> Vector2 {
-				this->x += x;
-				this->y += x;
+			auto operator+(const float f) -> Vector2 {
+				this->x += f;
+				this->y += f;
 				return *this;
 			}
 
-			auto operator-(const float x) -> Vector2 {
-				this->x -= x;
-				this->y -= x;
+			auto operator-(const float f) -> Vector2 {
+				this->x -= f;
+				this->y -= f;
 				return *this;
 			}
 
-			auto operator*(const Vector2 x) -> Vector2 {
-				this->x *= x.x;
-				this->y *= x.y;
+			auto operator*(const Vector2 vec2) -> Vector2 {
+				this->x *= vec2.x;
+				this->y *= vec2.y;
 				return *this;
 			}
 
-			auto operator-(const Vector2 x) -> Vector2 {
-				this->x -= x.x;
-				this->y -= x.y;
+			auto operator-(const Vector2 vec2) -> Vector2 {
+				this->x -= vec2.x;
+				this->y -= vec2.y;
 				return *this;
 			}
 
-			auto operator+(const Vector2 x) -> Vector2 {
-				this->x += x.x;
-				this->y += x.y;
+			auto operator+(const Vector2 vec2) -> Vector2 {
+				this->x += vec2.x;
+				this->y += vec2.y;
 				return *this;
 			}
 
-			auto operator/(const Vector2 x) -> Vector2 {
-				this->x /= x.x;
-				this->y /= x.y;
+			auto operator/(const Vector2 vec2) -> Vector2 {
+				this->x /= vec2.x;
+				this->y /= vec2.y;
 				return *this;
 			}
 
-			auto operator ==(const Vector2 x) const -> bool { return this->x == x.x && this->y == x.y; }
+			auto operator ==(const Vector2 vec2) const -> bool { return this->x == vec2.x && this->y == vec2.y; }
 		};
 #endif
 
@@ -1185,71 +1185,71 @@ public:
 				w = f4;
 			}
 
-			auto operator*(const float x) -> Vector4 {
-				this->x *= x;
-				this->y *= x;
-				this->z *= x;
-				this->w *= x;
+			auto operator*(const float vec4) -> Vector4 {
+				this->x *= vec4;
+				this->y *= vec4;
+				this->z *= vec4;
+				this->w *= vec4;
 				return *this;
 			}
 
-			auto operator-(const float x) -> Vector4 {
-				this->x -= x;
-				this->y -= x;
-				this->z -= x;
-				this->w -= x;
+			auto operator-(const float vec4) -> Vector4 {
+				this->x -= vec4;
+				this->y -= vec4;
+				this->z -= vec4;
+				this->w -= vec4;
 				return *this;
 			}
 
-			auto operator+(const float x) -> Vector4 {
-				this->x += x;
-				this->y += x;
-				this->z += x;
-				this->w += x;
+			auto operator+(const float vec4) -> Vector4 {
+				this->x += vec4;
+				this->y += vec4;
+				this->z += vec4;
+				this->w += vec4;
 				return *this;
 			}
 
-			auto operator/(const float x) -> Vector4 {
-				this->x /= x;
-				this->y /= x;
-				this->z /= x;
-				this->w /= x;
+			auto operator/(const float vec4) -> Vector4 {
+				this->x /= vec4;
+				this->y /= vec4;
+				this->z /= vec4;
+				this->w /= vec4;
 				return *this;
 			}
 
-			auto operator*(const Vector4 x) -> Vector4 {
-				this->x *= x.x;
-				this->y *= x.y;
-				this->z *= x.z;
-				this->w *= x.w;
+			auto operator*(const Vector4 vec4) -> Vector4 {
+				this->x *= vec4.x;
+				this->y *= vec4.y;
+				this->z *= vec4.z;
+				this->w *= vec4.w;
 				return *this;
 			}
 
-			auto operator-(const Vector4 x) -> Vector4 {
-				this->x -= x.x;
-				this->y -= x.y;
-				this->z -= x.z;
-				this->w -= x.w;
+			auto operator-(const Vector4 vec4) -> Vector4 {
+				this->x -= vec4.x;
+				this->y -= vec4.y;
+				this->z -= vec4.z;
+				this->w -= vec4.w;
 				return *this;
 			}
 
-			auto operator+(const Vector4 x) -> Vector4 {
-				this->x += x.x;
-				this->y += x.y;
-				this->z += x.z;
-				this->w += x.w;
+			auto operator+(const Vector4 vec4) -> Vector4 {
+				this->x += vec4.x;
+				this->y += vec4.y;
+				this->z += vec4.z;
+				this->w += vec4.w;
 				return *this;
 			}
 
-			auto operator/(const Vector4 x) -> Vector4 {
-				this->x /= x.x;
-				this->y /= x.y;
-				this->z /= x.z;
-				this->w /= x.w;
+			auto operator/(const Vector4 vec4) -> Vector4 {
+				this->x /= vec4.x;
+				this->y /= vec4.y;
+				this->z /= vec4.z;
+				this->w /= vec4.w;
 				return *this;
 			}
 
-			auto operator ==(const Vector4 x) const -> bool { return this->x == x.x && this->y == x.y && this->z == x.z && this->w == x.w; }
+			auto operator ==(const Vector4 vec4) const -> bool { return this->x == vec4.x && this->y == vec4.y && this->z == vec4.z && this->w == vec4.w; }
 		};
 #endif
 
@@ -1329,71 +1329,71 @@ public:
 				return {};
 			}
 
-			auto operator*(const float x) -> Quaternion {
-				this->x *= x;
-				this->y *= x;
-				this->z *= x;
-				this->w *= x;
+			auto operator*(const float quat) -> Quaternion {
+				this->x *= quat;
+				this->y *= quat;
+				this->z *= quat;
+				this->w *= quat;
 				return *this;
 			}
 
-			auto operator-(const float x) -> Quaternion {
-				this->x -= x;
-				this->y -= x;
-				this->z -= x;
-				this->w -= x;
+			auto operator-(const float quat) -> Quaternion {
+				this->x -= quat;
+				this->y -= quat;
+				this->z -= quat;
+				this->w -= quat;
 				return *this;
 			}
 
-			auto operator+(const float x) -> Quaternion {
-				this->x += x;
-				this->y += x;
-				this->z += x;
-				this->w += x;
+			auto operator+(const float quat) -> Quaternion {
+				this->x += quat;
+				this->y += quat;
+				this->z += quat;
+				this->w += quat;
 				return *this;
 			}
 
-			auto operator/(const float x) -> Quaternion {
-				this->x /= x;
-				this->y /= x;
-				this->z /= x;
-				this->w /= x;
+			auto operator/(const float quat) -> Quaternion {
+				this->x /= quat;
+				this->y /= quat;
+				this->z /= quat;
+				this->w /= quat;
 				return *this;
 			}
 
-			auto operator*(const Quaternion x) -> Quaternion {
-				this->x *= x.x;
-				this->y *= x.y;
-				this->z *= x.z;
-				this->w *= x.w;
+			auto operator*(const Quaternion quat) -> Quaternion {
+				this->x *= quat.x;
+				this->y *= quat.y;
+				this->z *= quat.z;
+				this->w *= quat.w;
 				return *this;
 			}
 
-			auto operator-(const Quaternion x) -> Quaternion {
-				this->x -= x.x;
-				this->y -= x.y;
-				this->z -= x.z;
-				this->w -= x.w;
+			auto operator-(const Quaternion quat) -> Quaternion {
+				this->x -= quat.x;
+				this->y -= quat.y;
+				this->z -= quat.z;
+				this->w -= quat.w;
 				return *this;
 			}
 
-			auto operator+(const Quaternion x) -> Quaternion {
-				this->x += x.x;
-				this->y += x.y;
-				this->z += x.z;
-				this->w += x.w;
+			auto operator+(const Quaternion quat) -> Quaternion {
+				this->x += quat.x;
+				this->y += quat.y;
+				this->z += quat.z;
+				this->w += quat.w;
 				return *this;
 			}
 
-			auto operator/(const Quaternion x) -> Quaternion {
-				this->x /= x.x;
-				this->y /= x.y;
-				this->z /= x.z;
-				this->w /= x.w;
+			auto operator/(const Quaternion quat) -> Quaternion {
+				this->x /= quat.x;
+				this->y /= quat.y;
+				this->z /= quat.z;
+				this->w /= quat.w;
 				return *this;
 			}
 
-			auto operator ==(const Quaternion x) const -> bool { return this->x == x.x && this->y == x.y && this->z == x.z && this->w == x.w; }
+			auto operator ==(const Quaternion quat) const -> bool { return this->x == quat.x && this->y == quat.y && this->z == quat.z && this->w == quat.w; }
 		};
 #endif
 

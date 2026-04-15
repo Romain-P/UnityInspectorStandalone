@@ -4,7 +4,6 @@
 #include "config/config.h"
 #include "hooks/hooks.h"
 #include "window/external_overlay.h"
-#include "window/input_forwarder.h"
 #include "window/window.h"
 #include "window/window_finder.h"
 #include "features/features.h"
@@ -21,7 +20,7 @@ namespace Loader
 		LOG_INFO("Initializing Overlay Hook.");
 		while (!WindowFinder::FindGameWindow())
 		{
-			std::this_thread::sleep_for(2s);
+			Sleep(2000);
 		}
 
 		if (Config::settings.ini.internal_overlay)
@@ -39,8 +38,7 @@ namespace Loader
 			for (uint8_t i = 0; i < 10 && !gameHwnd; i++)
 			{
 				gameHwnd = WindowFinder::FindGameWindow();
-				if (!gameHwnd)
-					std::this_thread::sleep_for(500ms);
+				if (!gameHwnd) Sleep(500);
 			}
 
 			if (!gameHwnd)

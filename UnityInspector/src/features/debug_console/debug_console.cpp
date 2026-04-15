@@ -3,6 +3,10 @@
 
 REGISTER_FEATURE(DebugConsole)
 
+std::deque<LogEntry> DebugConsole::logBuffer;
+std::mutex DebugConsole::logMutex;
+float DebugConsole::currentTime = 0.0f;
+
 void DebugConsole::Update(float)
 {
 }
@@ -18,7 +22,7 @@ std::string DebugConsole::GetStackTrace()
 	auto* mExtract = stackTraceClass->Get<UR::Method>("ExtractStackTrace");
 	if (!mExtract) return "";
 
-	auto* result = mExtract->Invoke<UT::String*>();
+	const auto* result = mExtract->Invoke<UT::String*>();
 	if (!result) return "";
 
 	return result->ToString();

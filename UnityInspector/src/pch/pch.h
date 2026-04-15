@@ -58,7 +58,6 @@
 #define X(str) xorstr_(str)
 
 // Usings
-using namespace std::literals::chrono_literals;
 using Json = nlohmann::json;
 using UR = UnityResolve;
 using UT = UR::UnityType;

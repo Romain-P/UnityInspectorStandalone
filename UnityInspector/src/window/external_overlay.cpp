@@ -242,7 +242,7 @@ namespace ExternalOverlay
 			UpdatePosition();
 			Present();
 
-			std::this_thread::sleep_for(5ms);
+			Sleep(5);
 		}
 	}
 

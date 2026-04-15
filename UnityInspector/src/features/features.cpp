@@ -13,13 +13,13 @@ namespace Features
 
 	void Update(float deltaTime)
 	{
-		for (auto& feature : features)
+		for (const auto& feature : features)
 			feature->Update(deltaTime);
 	}
 
 	void Render()
 	{
-		for (auto& feature : features)
+		for (const auto& feature : features)
 			feature->Render();
 	}
 }

@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "features.h"
 
+void IFeature::Init() {}
+void IFeature::Render() {}
+
 namespace Features
 {
 	static std::vector<std::unique_ptr<IFeature>> features;

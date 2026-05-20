@@ -44,6 +44,7 @@
 #include "imgui/imgui_internal.h"
 #include "imgui/imgui_impl_dx11.h"
 #include "imgui/imgui_impl_win32.h"
+#include "imgui/TextEditor.h"
 
 // Misc
 #include "ini/inicpp.h"
@@ -51,6 +52,9 @@
 #include "xorstr/xorstr.hpp"
 #include "console/Console.hpp"
 #include "proxy.h"
+
+// Lua
+#include "sol/sol.hpp"
 
 // Macros
 #define TOKENPASTE(x, y) x ## y

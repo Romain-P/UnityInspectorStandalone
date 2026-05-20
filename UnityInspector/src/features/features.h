@@ -10,8 +10,9 @@ class IFeature
 {
 public:
 	virtual ~IFeature() = default;
+	virtual void Init();
 	virtual void Update(float deltaTime) = 0;
-	virtual void Render() = 0;
+	virtual void Render();
 };
 
 namespace Features

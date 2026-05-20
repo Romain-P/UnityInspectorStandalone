@@ -9,6 +9,9 @@ namespace Features
 	{
 		for (auto& factory : GetRegistry())
 			features.push_back(factory());
+
+		for (const auto& feature : features)
+			feature->Init();
 	}
 
 	void Update(float deltaTime)

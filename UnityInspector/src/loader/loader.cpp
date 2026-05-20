@@ -18,10 +18,7 @@ namespace Loader
 		bool hookSuccess = false;
 
 		LOG_INFO("Initializing Overlay Hook.");
-		while (!WindowFinder::FindGameWindow())
-		{
-			Sleep(2000);
-		}
+		while (!WindowFinder::FindGameWindow()) Sleep(2000);
 
 		if (Config::settings.ini.internal_overlay)
 		{

@@ -3,6 +3,10 @@
 -- Add this file to your VSCode workspace for IntelliSense/autocomplete
 -- This is a stub file - it doesn't execute, it just provides type hints
 
+-- ============================================
+-- Math Types
+-- ============================================
+
 ---@class Vector2
 ---@field x number
 ---@field y number
@@ -59,7 +63,43 @@ Color = {}
 ---@field direction Vector3
 Ray = {}
 
---- Factory functions (use these instead of constructors)
+---@class Matrix4x4
+Matrix4x4 = {}
+---@param row number
+---@param col number
+---@return number
+function Matrix4x4:Get(row, col) end
+
+---@class Bounds
+---@field center Vector3
+---@field extents Vector3
+Bounds = {}
+
+---@class Plane
+---@field normal Vector3
+---@field distance number
+Plane = {}
+
+---@class Rect
+---@field x number
+---@field y number
+---@field width number
+---@field height number
+---@overload fun(): Rect
+---@overload fun(x: number, y: number, w: number, h: number): Rect
+Rect = {}
+
+---@class RaycastHit
+---@field point Vector3
+---@field normal Vector3
+---@field distance number
+---@field collider userdata
+RaycastHit = {}
+
+-- ============================================
+-- Factory functions
+-- ============================================
+
 ---@param x number
 ---@param y number
 ---@return Vector2
@@ -97,25 +137,78 @@ function MakeColor(r, g, b, a) end
 ---@return Ray
 function MakeRay(origin, dir) end
 
----@class UnityObject
+---@return Matrix4x4
+function MakeMatrix4x4() end
+
+---@param center Vector3
+---@param extents Vector3
+---@return Bounds
+function MakeBounds(center, extents) end
+
+---@param normal Vector3
+---@param distance number
+---@return Plane
+function MakePlane(normal, distance) end
+
+---@param x number
+---@param y number
+---@param w number
+---@param h number
+---@return Rect
+function MakeRect(x, y, w, h) end
+
+-- ============================================
+-- Base Unity Types
+-- ============================================
+
+---@class Object
+---@field GetType fun(self: Object): userdata
+---@field ToString fun(self: Object): string
+---@field GetHashCode fun(self: Object): number
+Object = {}
+
+---@class UnityObject : Object
+---@field IsAlive fun(self: UnityObject): boolean
 ---@field GetName fun(self: UnityObject): string
 ---@field Destroy fun(self: UnityObject)
 ---@field DontDestroyOnLoad fun(self: UnityObject)
 UnityObject = {}
 
----@class GameObject : UnityObject
----@field SetActive fun(self: GameObject, active: boolean)
----@field GetActiveSelf fun(self: GameObject): boolean
----@field GetActiveInHierarchy fun(self: GameObject): boolean
----@field GetTag fun(self: GameObject): string
----@field GetTransform fun(self: GameObject): Transform
-GameObject = {}
+---@class String : Object
+---@field ToString fun(self: String): string
+String = {}
 
 ---@class Component : UnityObject
 ---@field GetTransform fun(self: Component): Transform
 ---@field GetGameObject fun(self: Component): GameObject
 ---@field GetTag fun(self: Component): string
+---@field GetComponentInChildren fun(self: Component, type: Class): userdata
+---@field GetComponentInParent fun(self: Component, type: Class): userdata
+---@field GetComponents fun(self: Component, type: Class): table<number, userdata>
+---@field GetComponentsInChildren fun(self: Component, type: Class): table<number, userdata>
+---@field GetComponentsInParent fun(self: Component, type: Class): table<number, userdata>
 Component = {}
+
+---@class Behaviour : Component
+---@field GetEnabled fun(self: Behaviour): boolean
+---@field SetEnabled fun(self: Behaviour, value: boolean)
+Behaviour = {}
+
+---@class GameObject : UnityObject
+---@field GetName fun(self: GameObject): string
+---@field SetActive fun(self: GameObject, active: boolean)
+---@field GetActiveSelf fun(self: GameObject): boolean
+---@field GetActiveInHierarchy fun(self: GameObject): boolean
+---@field GetIsStatic fun(self: GameObject): boolean
+---@field GetTag fun(self: GameObject): string
+---@field GetTransform fun(self: GameObject): Transform
+---@field GetComponent fun(self: GameObject, type: Class): userdata
+---@field GetComponentInChildren fun(self: GameObject, type: Class): userdata
+---@field GetComponentInParent fun(self: GameObject, type: Class): userdata
+---@field GetComponents fun(self: GameObject, type: Class): table<number, userdata>
+---@field GetComponentsInChildren fun(self: GameObject, type: Class, includeInactive?: boolean): table<number, userdata>
+---@field GetComponentsInParent fun(self: GameObject, type: Class, includeInactive?: boolean): table<number, userdata>
+GameObject = {}
 
 ---@class Transform : Component
 ---@field GetPosition fun(self: Transform): Vector3
@@ -129,8 +222,15 @@ Component = {}
 ---@field GetLocalScale fun(self: Transform): Vector3
 ---@field SetLocalScale fun(self: Transform, s: Vector3)
 ---@field GetForward fun(self: Transform): Vector3
+---@field SetForward fun(self: Transform, v: Vector3)
 ---@field GetRight fun(self: Transform): Vector3
+---@field SetRight fun(self: Transform, v: Vector3)
 ---@field GetUp fun(self: Transform): Vector3
+---@field SetUp fun(self: Transform, v: Vector3)
+---@field GetLossyScale fun(self: Transform): Vector3
+---@field TransformPoint fun(self: Transform, pos: Vector3): Vector3
+---@field LookAt fun(self: Transform, worldPosition: Vector3)
+---@field Rotate fun(self: Transform, eulers: Vector3)
 ---@field GetChildCount fun(self: Transform): number
 ---@field GetChild fun(self: Transform, index: number): Transform
 ---@field GetParent fun(self: Transform): Transform
@@ -143,9 +243,11 @@ Transform = {}
 ---@field SetDepth fun(self: Camera, depth: number)
 ---@field GetFoV fun(self: Camera): number
 ---@field SetFoV fun(self: Camera, fov: number)
+---@field GetAllCount fun(self: Camera): number
 ---@field WorldToScreenPoint fun(self: Camera, pos: Vector3): Vector3
 ---@field ScreenToWorldPoint fun(self: Camera, pos: Vector3): Vector3
 ---@field ScreenPointToRay fun(self: Camera, pos: Vector2): Ray
+---@field CameraToWorldMatrix fun(self: Camera): Matrix4x4
 Camera = {}
 
 ---@class Light : Component
@@ -155,6 +257,12 @@ Camera = {}
 ---@field SetColor fun(self: Light, c: Color)
 ---@field GetRange fun(self: Light): number
 ---@field SetRange fun(self: Light, v: number)
+---@field GetLightType fun(self: Light): number
+---@field SetLightType fun(self: Light, type: number)
+---@field GetSpotAngle fun(self: Light): number
+---@field SetSpotAngle fun(self: Light, angle: number)
+---@field GetShadows fun(self: Light): number
+---@field SetShadows fun(self: Light, shadowType: number)
 Light = {}
 
 ---@class Rigidbody : Component
@@ -164,38 +272,177 @@ Light = {}
 ---@field SetDetectCollisions fun(self: Rigidbody, v: boolean)
 Rigidbody = {}
 
----@class Class
----@field name string
----@field namespaze string
----@field parent string
----@field FindObjectsOfType fun(self: Class): table<number, Component>
----@field FindObjectsByType fun(self: Class): table<number, Component>
----@field New fun(self: Class): userdata
----@field GetFieldValue fun(self: Class, obj: userdata, fieldName: string): any
----@field SetFieldValue fun(self: Class, obj: userdata, fieldName: string, value: any)
----@field InvokeMethod fun(self: Class, obj: userdata, methodName: string, ...): any
-Class = {}
+---@class Collider : Component
+---@field GetBounds fun(self: Collider): Bounds
+Collider = {}
 
----@class Assembly
----@field name string
----@field file string
-Assembly = {}
+---@class CapsuleCollider : Collider
+---@field GetCenter fun(self: CapsuleCollider): Vector3
+---@field GetDirection fun(self: CapsuleCollider): Vector3
+---@field GetHeight fun(self: CapsuleCollider): Vector3
+---@field GetRadius fun(self: CapsuleCollider): Vector3
+CapsuleCollider = {}
 
----@class DrawList
----@field AddLine fun(self: DrawList, a: Vector2, b: Vector2, col: number, thickness?: number)
----@field AddRect fun(self: DrawList, a: Vector2, b: Vector2, col: number, rounding?: number, flags?: number, thickness?: number)
----@field AddRectFilled fun(self: DrawList, a: Vector2, b: Vector2, col: number, rounding?: number, flags?: number)
----@field AddCircle fun(self: DrawList, center: Vector2, radius: number, col: number, segments?: number, thickness?: number)
----@field AddCircleFilled fun(self: DrawList, center: Vector2, radius: number, col: number, segments?: number)
----@field AddText fun(self: DrawList, pos: Vector2, col: number, text: string)
----@field AddTriangle fun(self: DrawList, a: Vector2, b: Vector2, c: Vector2, col: number, thickness?: number)
----@field AddTriangleFilled fun(self: DrawList, a: Vector2, b: Vector2, c: Vector2, col: number)
----@field PushClipRect fun(self: DrawList, a: Vector2, b: Vector2, intersect: boolean)
----@field PopClipRect fun(self: DrawList)
-DrawList = {}
+---@class BoxCollider : Collider
+---@field GetCenter fun(self: BoxCollider): Vector3
+---@field GetSize fun(self: BoxCollider): Vector3
+BoxCollider = {}
 
----@class Unity
-Unity = {}
+---@class Mesh : UnityObject
+---@field GetBounds fun(self: Mesh): Bounds
+Mesh = {}
+
+---@class Renderer : Component
+---@field GetEnabled fun(self: Renderer): boolean
+---@field SetEnabled fun(self: Renderer, enable: boolean)
+---@field GetMaterialCount fun(self: Renderer): number
+---@field GetMaterial fun(self: Renderer): Material
+---@field GetSharedMaterial fun(self: Renderer): Material
+---@field SetMaterial fun(self: Renderer, material: Material)
+---@field GetBounds fun(self: Renderer): Bounds
+Renderer = {}
+
+---@class Sprite : Object
+---@field GetBounds fun(self: Sprite): Bounds
+---@field GetRect fun(self: Sprite): Rect
+---@field GetBorder fun(self: Sprite): Vector4
+---@field GetTexture fun(self: Sprite): Texture2D
+---@field GetPixelsPerUnit fun(self: Sprite): number
+---@field GetPivot fun(self: Sprite): Vector2
+---@field GetPacked fun(self: Sprite): boolean
+Sprite = {}
+
+---@class Shader : Object
+---@field isSupported fun(self: Shader): boolean
+---@field GetPropertyCount fun(self: Shader): number
+---@field FindPropertyIndex fun(self: Shader, propertyName: string): number
+---@field GetPropertyName fun(self: Shader, propertyIndex: number): string
+Shader = {}
+
+---@class Material : Object
+---@field GetShader fun(self: Material): Shader
+---@field SetShader fun(self: Material, shader: Shader)
+---@field SetTexture fun(self: Material, name: string, value: Texture)
+---@field SetTextureByID fun(self: Material, nameID: number, value: Texture)
+---@field GetTexture fun(self: Material, name: string): Texture
+---@field GetTextureByID fun(self: Material, nameID: number): Texture
+---@field SetColor fun(self: Material, name: string, value: Color)
+---@field SetColorByID fun(self: Material, nameID: number, value: Color)
+---@field SetFloat fun(self: Material, name: string, value: number)
+---@field SetFloatByID fun(self: Material, nameID: number, value: number)
+---@field SetInt fun(self: Material, name: string, value: number)
+---@field SetIntByID fun(self: Material, nameID: number, value: number)
+Material = {}
+
+---@class Texture : Object
+---@field GetWidth fun(self: Texture): number
+---@field GetHeight fun(self: Texture): number
+---@field GetMipmapCount fun(self: Texture): number
+---@field GetIsReadable fun(self: Texture): boolean
+---@field GetWrapMode fun(self: Texture): number
+---@field SetWrapMode fun(self: Texture, wrapMode: number)
+---@field GetFilterMode fun(self: Texture): number
+---@field SetFilterMode fun(self: Texture, filterMode: number)
+Texture = {}
+
+---@class Texture2D : Texture
+---@field LoadRawTextureData fun(self: Texture2D, data: userdata)
+---@field LoadImage fun(self: Texture2D, data: userdata)
+---@field Apply fun(self: Texture2D, updateMipmaps?: boolean, makeNoLongerReadable?: boolean)
+Texture2D = {}
+
+---@class Animator : Behaviour
+---@field GetBoneTransform fun(self: Animator, boneId: number): Transform
+Animator = {}
+
+---@class LayerMask
+---@field m_Mask number
+LayerMask = {}
+
+-- ============================================
+-- Enums
+-- ============================================
+
+LightType = {
+    Spot = 0,
+    Directional = 1,
+    Point = 2,
+    Area = 3,
+    Rectangle = 3,
+    Disc = 4,
+    Pyramid = 5,
+    Box = 6,
+    Tube = 7
+}
+
+LightShadows = {
+    None = 0,
+    Hard = 1,
+    Soft = 2
+}
+
+HumanBodyBones = {
+    Hips = 0,
+    LeftUpperLeg = 1,
+    RightUpperLeg = 2,
+    LeftLowerLeg = 3,
+    RightLowerLeg = 4,
+    LeftFoot = 5,
+    RightFoot = 6,
+    Spine = 7,
+    Chest = 8,
+    UpperChest = 54,
+    Neck = 9,
+    Head = 10,
+    LeftShoulder = 11,
+    RightShoulder = 12,
+    LeftUpperArm = 13,
+    RightUpperArm = 14,
+    LeftLowerArm = 15,
+    RightLowerArm = 16,
+    LeftHand = 17,
+    RightHand = 18,
+    LeftToes = 19,
+    RightToes = 20,
+    LeftEye = 21,
+    RightEye = 22,
+    Jaw = 23,
+    LeftThumbProximal = 24,
+    LeftThumbIntermediate = 25,
+    LeftThumbDistal = 26,
+    LeftIndexProximal = 27,
+    LeftIndexIntermediate = 28,
+    LeftIndexDistal = 29,
+    LeftMiddleProximal = 30,
+    LeftMiddleIntermediate = 31,
+    LeftMiddleDistal = 32,
+    LeftRingProximal = 33,
+    LeftRingIntermediate = 34,
+    LeftRingDistal = 35,
+    LeftLittleProximal = 36,
+    LeftLittleIntermediate = 37,
+    LeftLittleDistal = 38,
+    RightThumbProximal = 39,
+    RightThumbIntermediate = 40,
+    RightThumbDistal = 41,
+    RightIndexProximal = 42,
+    RightIndexIntermediate = 43,
+    RightIndexDistal = 44,
+    RightMiddleProximal = 45,
+    RightMiddleIntermediate = 46,
+    RightMiddleDistal = 47,
+    RightRingProximal = 48,
+    RightRingIntermediate = 49,
+    RightRingDistal = 50,
+    RightLittleProximal = 51,
+    RightLittleIntermediate = 52,
+    RightLittleDistal = 53,
+    LastBone = 55
+}
+
+-- ============================================
+-- Static Namespaces
+-- ============================================
 
 ---@class UnityGameObject
 ---@field Find fun(name: string): GameObject
@@ -213,16 +460,23 @@ Unity.Camera = {}
 ---@field FindAll fun(): table<number, Light>
 Unity.Light = {}
 
+---@class UnityString
+---@field New fun(str: string): String
+Unity.String = {}
+
 ---@class UnityObject_NS
 ---@field FindObjectsOfType fun(className: string): table<number, userdata>
 ---@field FindObjectsByType fun(className: string): table<number, userdata>
 ---@field Instantiate fun(original: UnityObject): UnityObject
 ---@field Destroy fun(obj: UnityObject)
+---@field FindObjectFromInstanceID fun(instanceID: number): UnityObject
+---@field DontDestroyOnLoad fun(target: UnityObject)
 Unity.Object = {}
 
 ---@class UnityPhysics
 ---@field Raycast fun(origin: Vector3, direction: Vector3, maxDistance: number): boolean
 ---@field Linecast fun(start: Vector3, end_pos: Vector3): boolean
+---@field IgnoreCollision fun(collider1: Collider, collider2: Collider)
 Unity.Physics = {}
 
 ---@class UnityTime
@@ -248,10 +502,90 @@ Unity.Screen = {}
 ---@field GetMouseWheel fun(): number
 Unity.Input = {}
 
+---@class UnityLayerMask
+---@field NameToLayer fun(name: string): number
+---@field LayerToName fun(layer: number): string
+Unity.LayerMask = {}
+
+---@class UnityShader
+---@field Find fun(name: string): Shader
+---@field EnableKeyword fun(keyword: string)
+---@field DisableKeyword fun(keyword: string)
+---@field PropertyToID fun(name: string): number
+---@field SetGlobalFloat fun(name: string, value: number)
+---@field SetGlobalVector fun(name: string, value: Vector4)
+---@field SetGlobalTexture fun(name: string, value: Texture)
+---@field GetGlobalFloat fun(name: string): number
+Unity.Shader = {}
+
+---@class UnityTexture2D
+---@field New fun(width: number, height: number, textureFormat?: number, mipChain?: boolean): Texture2D
+---@field GetWhiteTexture fun(): Texture2D
+---@field GetBlackTexture fun(): Texture2D
+Unity.Texture2D = {}
+
+---@class UnitySprite
+---@field Create fun(texture: Texture2D, rect: Rect, pivot: Vector2, pixelsPerUnit: number): Sprite
+Unity.Sprite = {}
+
 ---@class UnityResolve
 ---@field GetClass fun(assembly: string, className: string, namespaze: string): Class
 ---@field GetAssemblies fun(): table<number, Assembly>
 Unity.Resolve = {}
+
+-- ============================================
+-- Reflection Types
+-- ============================================
+
+---@class Field
+---@field name string
+---@field offset number
+---@field static boolean
+---@field typeName string
+Field = {}
+
+---@class Method
+---@field name string
+---@field static boolean
+---@field returnType string
+---@field argCount number
+Method = {}
+
+---@class Class
+---@field name string
+---@field namespaze string
+---@field parent string
+---@field GetFields fun(self: Class): table<number, Field>
+---@field GetMethods fun(self: Class): table<number, Method>
+---@field FindObjectsOfType fun(self: Class): table<number, Component>
+---@field FindObjectsByType fun(self: Class): table<number, Component>
+---@field New fun(self: Class): userdata
+---@field GetFieldValue fun(self: Class, obj: userdata, fieldName: string): any
+---@field SetFieldValue fun(self: Class, obj: userdata, fieldName: string, value: any)
+---@field InvokeMethod fun(self: Class, obj: userdata, methodName: string, ...): any
+Class = {}
+
+---@class Assembly
+---@field name string
+---@field file string
+Assembly = {}
+
+-- ============================================
+-- ImGui
+-- ============================================
+
+---@class DrawList
+---@field AddLine fun(self: DrawList, a: Vector2, b: Vector2, col: number, thickness?: number)
+---@field AddRect fun(self: DrawList, a: Vector2, b: Vector2, col: number, rounding?: number, flags?: number, thickness?: number)
+---@field AddRectFilled fun(self: DrawList, a: Vector2, b: Vector2, col: number, rounding?: number, flags?: number)
+---@field AddCircle fun(self: DrawList, center: Vector2, radius: number, col: number, segments?: number, thickness?: number)
+---@field AddCircleFilled fun(self: DrawList, center: Vector2, radius: number, col: number, segments?: number)
+---@field AddText fun(self: DrawList, pos: Vector2, col: number, text: string)
+---@field AddTriangle fun(self: DrawList, a: Vector2, b: Vector2, c: Vector2, col: number, thickness?: number)
+---@field AddTriangleFilled fun(self: DrawList, a: Vector2, b: Vector2, c: Vector2, col: number)
+---@field PushClipRect fun(self: DrawList, a: Vector2, b: Vector2, intersect: boolean)
+---@field PopClipRect fun(self: DrawList)
+DrawList = {}
 
 ---@class imgui
 imgui = {}
@@ -345,33 +679,6 @@ function imgui.GetBackgroundDrawList() end
 ---@return DrawList
 function imgui.GetForegroundDrawList() end
 
----@class log
-log = {}
-
----@param msg string
-function log.info(msg) end
-
----@param msg string
-function log.warn(msg) end
-
----@param msg string
-function log.error(msg) end
-
----@param msg string
-function log.debug(msg) end
-
----@param ... any
-function print(...) end
-
--- Common callback functions for plugins
----@param dt number Delta time in seconds
-function onUpdate(dt) end
-
-function onInit() end
-function onRender() end
-function onUnload() end
-
--- Additional ImGui functions
 ---@param label string
 ---@param currentItem number
 ---@param items string Semicolon-separated items (e.g., "A;B;C")
@@ -499,3 +806,36 @@ function imgui.NextColumn() end
 ---@param index number
 ---@param width number
 function imgui.SetColumnWidth(index, width) end
+
+-- ============================================
+-- Logging
+-- ============================================
+
+---@class log
+log = {}
+
+---@param msg string
+function log.info(msg) end
+
+---@param msg string
+function log.warn(msg) end
+
+---@param msg string
+function log.error(msg) end
+
+---@param msg string
+function log.debug(msg) end
+
+---@param ... any
+function print(...) end
+
+-- ============================================
+-- Plugin Lifecycle Callbacks
+-- ============================================
+
+---@param dt number Delta time in seconds
+function onUpdate(dt) end
+
+function onInit() end
+function onRender() end
+function onUnload() end

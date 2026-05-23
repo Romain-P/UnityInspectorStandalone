@@ -31,7 +31,7 @@ private:
 	bool initialized = false;
 	bool showConsole = false;
 	float reloadTimer = 0.0f;
-	static constexpr float RELOAD_INTERVAL = 1.5f;
+	static constexpr float RELOAD_INTERVAL = .5f;
 
 	TextEditor textEditor;
 

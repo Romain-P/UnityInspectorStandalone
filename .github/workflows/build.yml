@@ -1,0 +1,58 @@
+name: Build CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  SCCACHE_DIR: ${{ github.workspace }}\.sccache
+  SCCACHE_CACHE_SIZE: 2G
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Setup Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.4
+
+      - name: Cache sccache directory
+        uses: actions/cache@v4
+        with:
+          path: .sccache
+          key: ${{ runner.os }}-sccache-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-sccache-
+
+      - name: Configure CMake
+        run: cmake -B build -S . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+
+      - name: Build project
+        run: cmake --build build --config Release
+
+      - name: Show sccache stats
+        run: sccache --show-stats
+
+      - name: Rename DLL to winhttp.dll
+        run: Rename-Item -Path "build\bin\UnityInspector.dll" -NewName "winhttp.dll"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: winhttp-dll
+          path: build\bin\winhttp.dll

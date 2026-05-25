@@ -46,7 +46,7 @@ std::vector<std::pair<std::string, int>> GetEnumValues(const std::string& enumTy
 
 	void* iter = nullptr;
 	void* field;
-	while ((field = UR::Invoke<void*, void*, void*>(API("class_get_fields"), enumClass, iter)))
+	while ((field = UR::Invoke<void*, void*, void*>(API("class_get_fields"), enumClass, &iter)))
 	{
 		if (const int flags = UR::Invoke<int, void*>(API("field_get_flags"), field); (flags & 0x10) != 0)
 		{
@@ -88,34 +88,37 @@ static void CheckAndUpdateEnumType(std::string& typeName, const std::string& fie
 
 EditableType DetermineEditableType(const std::string& typeName, std::string* enumTypeNameOut)
 {
-	std::string effectiveTypeName = typeName;
-	CheckAndUpdateEnumType(effectiveTypeName, typeName, enumTypeNameOut);
+    std::string effectiveTypeName = typeName;
+    CheckAndUpdateEnumType(effectiveTypeName, typeName, enumTypeNameOut);
 
-	if (effectiveTypeName == "Enum") return EditableType::Enum;
+    if (effectiveTypeName == "Enum") return EditableType::Enum;
 
-	if (typeName == "System.Int16" || typeName == "System.Int32" || typeName == "System.Int64" ||
-		typeName == "System.UInt16" || typeName == "System.UInt32" || typeName == "System.UInt64" ||
-		typeName == "System.Byte" || typeName == "System.SByte")
-		return EditableType::Int;
-	if (typeName == "System.Single")
-		return EditableType::Float;
-	if (typeName == "System.Double")
-		return EditableType::Double;
-	if (typeName == "System.Boolean")
-		return EditableType::Bool;
-	if (typeName == "System.String")
-		return EditableType::String;
-	if (typeName == "UnityEngine.Vector2")
-		return EditableType::Vector2;
-	if (typeName == "UnityEngine.Vector3")
-		return EditableType::Vector3;
-	if (typeName == "UnityEngine.Vector4")
-		return EditableType::Vector4;
-	if (typeName == "UnityEngine.Quaternion")
-		return EditableType::Quaternion;
-	if (typeName == "UnityEngine.Color")
-		return EditableType::Color;
-	return EditableType::None;
+    if (typeName == "System.Int16" || typeName == "System.Int32" || typeName == "System.Int64" ||
+        typeName == "System.UInt16" || typeName == "System.UInt32" || typeName == "System.UInt64" ||
+        typeName == "System.Byte" || typeName == "System.SByte")
+        return EditableType::Int;
+    if (typeName == "System.Single")
+        return EditableType::Float;
+    if (typeName == "System.Double")
+        return EditableType::Double;
+    if (typeName == "System.Boolean")
+        return EditableType::Bool;
+    if (typeName == "System.String")
+        return EditableType::String;
+    if (typeName == "UnityEngine.Vector2")
+        return EditableType::Vector2;
+    if (typeName == "UnityEngine.Vector3")
+        return EditableType::Vector3;
+    if (typeName == "UnityEngine.Vector4")
+        return EditableType::Vector4;
+    if (typeName == "UnityEngine.Quaternion")
+        return EditableType::Quaternion;
+    if (typeName == "UnityEngine.Color")
+        return EditableType::Color;
+    if (!typeName.starts_with("System.") && !typeName.starts_with("UnityEngine."))
+        return EditableType::CustomObject;
+
+    return EditableType::None;
 }
 
 FieldEditor::FieldEditor() = default;
@@ -317,10 +320,16 @@ void FieldEditor::Render()
 	}
 	ImGui::End();
 
+	std::vector<std::unique_ptr<FieldEditor>> newEditors;
 	for (auto& editor : nestedEditors)
 	{
-		if (editor) editor->Render();
+		if (editor)
+		{
+			editor->Render();
+			editor->TakePendingEditors(newEditors);
+		}
 	}
+	nestedEditors.insert(nestedEditors.end(), std::make_move_iterator(newEditors.begin()), std::make_move_iterator(newEditors.end()));
 
 	std::erase_if(nestedEditors, [](const std::unique_ptr<FieldEditor>& e) {
 		return !e || !e->IsOpen();
@@ -683,6 +692,12 @@ void FieldEditor::RenderStringEditor()
 		ImVec2(-1, ImGui::GetTextLineHeight() * 4));
 }
 
+void FieldEditor::TakePendingEditors(std::vector<std::unique_ptr<FieldEditor>>& out)
+{
+	out.insert(out.end(), std::make_move_iterator(pendingEditors.begin()), std::make_move_iterator(pendingEditors.end()));
+	pendingEditors.clear();
+}
+
 void FieldEditor::RenderNestedInspector()
 {
 	if (!state.nestedClass || !state.nestedInstance) return;
@@ -736,13 +751,13 @@ void FieldEditor::RenderNestedInspector()
 			if ((isEditable || isPointer) && !field->static_field)
 			{
 				ImGui::PushID(field.get());
-				if (ImGui::SmallButton("Edit"))
-				{
-					std::string title = "Edit " + state.nestedClass->name + "." + field->name;
-					auto editor = std::make_unique<FieldEditor>();
-					editor->OpenFieldEditor(field.get(), state.nestedInstance, title);
-					nestedEditors.push_back(std::move(editor));
-				}
+					if (ImGui::SmallButton("Edit"))
+					{
+						std::string title = "Edit " + state.nestedClass->name + "." + field->name;
+						auto editor = std::make_unique<FieldEditor>();
+						editor->OpenFieldEditor(field.get(), state.nestedInstance, title);
+						pendingEditors.push_back(std::move(editor));
+					}
 				ImGui::PopID();
 			}
 		}

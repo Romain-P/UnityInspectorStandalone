@@ -14,7 +14,9 @@ struct ComponentFieldInfo final
 	int offset;
 	void* fieldHandle;
 	void* classHandle = nullptr;
+	void* typeClassHandle = nullptr;
 	bool isStatic = false;
+	bool isValueType = false;
 	EditableType editableType = EditableType::None;
 };
 
@@ -65,6 +67,9 @@ struct FieldEditor final
 private:
 	FieldEditorState state;
 	std::vector<std::unique_ptr<FieldEditor>> nestedEditors;
+	std::vector<std::unique_ptr<FieldEditor>> pendingEditors;
+
+	void TakePendingEditors(std::vector<std::unique_ptr<FieldEditor>>& out);
 
 	static UR::Class* GetPointerClass(const std::string& typeName);
 	void ReadFieldValue();

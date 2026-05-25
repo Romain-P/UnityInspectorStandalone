@@ -115,9 +115,9 @@ static void SectionLabel(const char* text, size_t count)
 		ImGui::TextDisabled("%s", text);
 }
 
-void Inspector::RenderEditableField(UT::Component* component, const ComponentFieldInfo& field) const
+void Inspector::RenderEditableField(void* instance, const ComponentFieldInfo& field)
 {
-	if (!component || field.offset < 0) return;
+	if (!instance || field.offset < 0) return;
 
 	ImGui::PushID(field.offset);
 
@@ -187,6 +187,43 @@ void Inspector::RenderEditableField(UT::Component* component, const ComponentFie
 			else { ImGui::TextDisabled("ERROR"); }
 			break;
 		}
+		case EditableType::CustomObject:
+		{
+			void* instancePtr = nullptr;
+			bool isValid = Helper::SafeGetStaticFieldPointer(field.fieldHandle, instancePtr) && instancePtr != nullptr;
+
+			if (!isValid)
+			{
+				ImGui::TextDisabled("(null)");
+			}
+			else
+			{
+				ImGui::TextDisabled("[static Object]");
+				ImGui::SameLine();
+				if (ImGui::SmallButton("Enter"))
+				{
+					if (auto activeTab = GetActiveTab())
+					{
+						InspectionTarget nextTarget;
+						nextTarget.instance = instancePtr;
+						nextTarget.name = field.name;
+						nextTarget.classHandle = field.classHandle;
+						
+						nextTarget.cachedComponents.push_back(reinterpret_cast<UT::Component*>(instancePtr));
+						nextTarget.cachedComponentNames.push_back(field.typeName);
+
+						void* targetKlass = field.isValueType ? field.typeClassHandle : nullptr;
+
+						nextTarget.cachedComponentFields.push_back(GetObjectFields(instancePtr, targetKlass));
+						nextTarget.cachedComponentProperties.push_back(GetObjectProperties(instancePtr, targetKlass));
+						nextTarget.cachedComponentMethods.push_back(GetObjectMethods(instancePtr, targetKlass));
+
+						activeTab->navigationStack.push_back(std::move(nextTarget));
+					}
+				}
+			}
+			break;
+		}
 		default:
 			ImGui::TextDisabled("[static]");
 			break;
@@ -199,12 +236,12 @@ void Inspector::RenderEditableField(UT::Component* component, const ComponentFie
 		case EditableType::Int:
 		{
 			int val;
-			if (Helper::SafeReadInt(component, field.offset, val))
+			if (Helper::SafeReadInt(instance, field.offset, val))
 			{
 				if (field.enumTypeName.empty())
 				{
 					if (ImGui::DragInt("##val", &val))
-						Helper::SafeWriteInt(component, field.offset, val);
+						Helper::SafeWriteInt(instance, field.offset, val);
 				}
 				else
 				{
@@ -218,7 +255,7 @@ void Inspector::RenderEditableField(UT::Component* component, const ComponentFie
 					for (const auto& key : enumVals | std::views::keys) names.push_back(key.c_str());
 					if (ImGui::Combo("##val", &currentIdx, names.data(), static_cast<int>(names.size())))
 					{
-						Helper::SafeWriteInt(component, field.offset, enumVals[currentIdx].second);
+						Helper::SafeWriteInt(instance, field.offset, enumVals[currentIdx].second);
 					}
 					ImGui::SameLine();
 					ImGui::Text("%d", val);
@@ -230,21 +267,21 @@ void Inspector::RenderEditableField(UT::Component* component, const ComponentFie
 		case EditableType::Float:
 		{
 			float val;
-			if (Helper::SafeReadFloat(component, field.offset, val))
+			if (Helper::SafeReadFloat(instance, field.offset, val))
 			{
 				if (ImGui::DragFloat("##val", &val, 0.1f))
-					Helper::SafeWriteFloat(component, field.offset, val);
+					Helper::SafeWriteFloat(instance, field.offset, val);
 			}
 			else { ImGui::TextDisabled("ERROR"); }
 			break;
 		}
 		case EditableType::Double:
 		{
-			if (double val; Helper::SafeReadDouble(component, field.offset, val))
+			if (double val; Helper::SafeReadDouble(instance, field.offset, val))
 			{
 				float fVal = static_cast<float>(val);
 				if (ImGui::DragFloat("##val", &fVal, 0.01f))
-					Helper::SafeWriteDouble(component, field.offset, static_cast<double>(fVal));
+					Helper::SafeWriteDouble(instance, field.offset, static_cast<double>(fVal));
 			}
 			else { ImGui::TextDisabled("ERROR"); }
 			break;
@@ -252,17 +289,17 @@ void Inspector::RenderEditableField(UT::Component* component, const ComponentFie
 		case EditableType::Bool:
 		{
 			bool val;
-			if (Helper::SafeReadBool(component, field.offset, val))
+			if (Helper::SafeReadBool(instance, field.offset, val))
 			{
 				if (ImGui::Checkbox("##val", &val))
-					Helper::SafeWriteBool(component, field.offset, val);
+					Helper::SafeWriteBool(instance, field.offset, val);
 			}
 			else { ImGui::TextDisabled("ERROR"); }
 			break;
 		}
 		case EditableType::String:
 		{
-			if (UT::String* strPtr = nullptr; Helper::SafeReadStringPtr(component, field.offset, strPtr))
+			if (UT::String* strPtr = nullptr; Helper::SafeReadStringPtr(instance, field.offset, strPtr))
 			{
 				const std::string currentStr = strPtr ? strPtr->ToString() : "(null)";
 				ImGui::TextDisabled("\"%s\"", currentStr.c_str());
@@ -272,13 +309,13 @@ void Inspector::RenderEditableField(UT::Component* component, const ComponentFie
 		}
 		case EditableType::Vector2:
 		{
-			if (UT::Vector2 val; Helper::SafeReadVector2(component, field.offset, val))
+			if (UT::Vector2 val; Helper::SafeReadVector2(instance, field.offset, val))
 			{
 				float arr[2] = { val.x, val.y };
 				if (ImGui::DragFloat2("##val", arr, 0.1f))
 				{
 					val.x = arr[0]; val.y = arr[1];
-					Helper::SafeWriteVector2(component, field.offset, val);
+					Helper::SafeWriteVector2(instance, field.offset, val);
 				}
 			}
 			else { ImGui::TextDisabled("ERROR"); }
@@ -286,13 +323,13 @@ void Inspector::RenderEditableField(UT::Component* component, const ComponentFie
 		}
 		case EditableType::Vector3:
 		{
-			if (UT::Vector3 val; Helper::SafeReadVector3(component, field.offset, val))
+			if (UT::Vector3 val; Helper::SafeReadVector3(instance, field.offset, val))
 			{
 				float arr[3] = { val.x, val.y, val.z };
 				if (DragVector3Compact("##val", arr, 0.1f))
 				{
 					val.x = arr[0]; val.y = arr[1]; val.z = arr[2];
-					Helper::SafeWriteVector3(component, field.offset, val);
+					Helper::SafeWriteVector3(instance, field.offset, val);
 				}
 			}
 			else { ImGui::TextDisabled("ERROR"); }
@@ -300,13 +337,13 @@ void Inspector::RenderEditableField(UT::Component* component, const ComponentFie
 		}
 		case EditableType::Vector4:
 		{
-			if (UT::Vector4 val; Helper::SafeReadVector4(component, field.offset, val))
+			if (UT::Vector4 val; Helper::SafeReadVector4(instance, field.offset, val))
 			{
 				float arr[4] = { val.x, val.y, val.z, val.w };
 				if (ImGui::DragFloat4("##val", arr, 0.1f))
 				{
 					val.x = arr[0]; val.y = arr[1]; val.z = arr[2]; val.w = arr[3];
-					Helper::SafeWriteVector4(component, field.offset, val);
+					Helper::SafeWriteVector4(instance, field.offset, val);
 				}
 			}
 			else { ImGui::TextDisabled("ERROR"); }
@@ -314,13 +351,13 @@ void Inspector::RenderEditableField(UT::Component* component, const ComponentFie
 		}
 		case EditableType::Quaternion:
 		{
-			if (UT::Quaternion val; Helper::SafeReadQuaternion(component, field.offset, val))
+			if (UT::Quaternion val; Helper::SafeReadQuaternion(instance, field.offset, val))
 			{
 				float arr[4] = { val.x, val.y, val.z, val.w };
 				if (DragVector4Compact("##val", arr, 0.01f))
 				{
 					val.x = arr[0]; val.y = arr[1]; val.z = arr[2]; val.w = arr[3];
-					Helper::SafeWriteQuaternion(component, field.offset, val);
+					Helper::SafeWriteQuaternion(instance, field.offset, val);
 				}
 			}
 			else { ImGui::TextDisabled("ERROR"); }
@@ -328,18 +365,52 @@ void Inspector::RenderEditableField(UT::Component* component, const ComponentFie
 		}
 		case EditableType::Color:
 		{
-			if (UT::Color val; Helper::SafeReadColor(component, field.offset, val))
+			if (UT::Color val; Helper::SafeReadColor(instance, field.offset, val))
 			{
 				float arr[4] = { val.r, val.g, val.b, val.a };
 				if (ImGui::ColorEdit4("##val", arr, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar))
 				{
 					val.r = arr[0]; val.g = arr[1]; val.b = arr[2]; val.a = arr[3];
-					Helper::SafeWriteColor(component, field.offset, val);
+					Helper::SafeWriteColor(instance, field.offset, val);
 				}
 			}
 			else { ImGui::TextDisabled("ERROR"); }
 			break;
 		}
+        case EditableType::CustomObject:
+        {
+            ImGui::TextDisabled("(Object)");
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Enter"))
+            {
+                if (auto activeTab = GetActiveTab())
+                {
+                    void* instancePtr = nullptr;
+                    
+                    
+                    if (Helper::SafeReadPointer(instance, field.offset, instancePtr) && instancePtr)
+                    {
+                        InspectionTarget nextTarget;
+                        nextTarget.instance = instancePtr;
+                        nextTarget.name = field.name;
+                        nextTarget.classHandle = field.classHandle;
+                        
+                        nextTarget.cachedComponents.push_back(reinterpret_cast<UT::Component*>(instancePtr));
+                        nextTarget.cachedComponentNames.push_back(field.typeName);
+                        void* targetKlass = field.isValueType ? field.typeClassHandle : nullptr;
+
+                        nextTarget.cachedComponentFields.push_back(GetObjectFields(instancePtr, targetKlass));
+                        nextTarget.cachedComponentProperties.push_back(GetObjectProperties(instancePtr, targetKlass));
+                        nextTarget.cachedComponentMethods.push_back(GetObjectMethods(instancePtr, targetKlass));
+
+                        activeTab->navigationStack.push_back(std::move(nextTarget));
+                    }
+
+
+                }
+            }
+            break;
+        }
 		default:
 			ImGui::TextDisabled("...");
 			break;
@@ -349,9 +420,9 @@ void Inspector::RenderEditableField(UT::Component* component, const ComponentFie
 	ImGui::PopID();
 }
 
-void Inspector::RenderEditableProperty(UT::Component* component, const ComponentPropertyInfo& prop) const
+void Inspector::RenderEditableProperty(void* instance, const ComponentPropertyInfo& prop) const
 {
-	if (!component) return;
+	if (!instance) return;
 
 	ImGui::PushID(prop.name.c_str());
 
@@ -370,10 +441,10 @@ void Inspector::RenderEditableProperty(UT::Component* component, const Component
 	case EditableType::Int:
 	{
 		int val = 0;
-		if (Helper::SafeInvokeGetter(component, prop.getterHandle, &val, sizeof(int)))
+		if (Helper::SafeInvokeGetter(instance, prop.getterHandle, &val, sizeof(int)))
 		{
 			if (prop.canWrite && ImGui::DragInt("##val", &val))
-				Helper::SafeInvokeSetter(component, prop.setterHandle, &val);
+				Helper::SafeInvokeSetter(instance, prop.setterHandle, &val);
 			else if (!prop.canWrite)
 				ImGui::Text("%d", val);
 		}
@@ -383,10 +454,10 @@ void Inspector::RenderEditableProperty(UT::Component* component, const Component
 	case EditableType::Float:
 	{
 		float val = 0;
-		if (Helper::SafeInvokeGetter(component, prop.getterHandle, &val, sizeof(float)))
+		if (Helper::SafeInvokeGetter(instance, prop.getterHandle, &val, sizeof(float)))
 		{
 			if (prop.canWrite && ImGui::DragFloat("##val", &val, 0.1f))
-				Helper::SafeInvokeSetter(component, prop.setterHandle, &val);
+				Helper::SafeInvokeSetter(instance, prop.setterHandle, &val);
 			else if (!prop.canWrite)
 				ImGui::Text("%.3f", val);
 		}
@@ -396,13 +467,13 @@ void Inspector::RenderEditableProperty(UT::Component* component, const Component
 	case EditableType::Double:
 	{
 		double val = 0;
-		if (Helper::SafeInvokeGetter(component, prop.getterHandle, &val, sizeof(double)))
+		if (Helper::SafeInvokeGetter(instance, prop.getterHandle, &val, sizeof(double)))
 		{
 			float fVal = static_cast<float>(val);
 			if (prop.canWrite && ImGui::DragFloat("##val", &fVal, 0.01f))
 			{
 				val = static_cast<double>(fVal);
-				Helper::SafeInvokeSetter(component, prop.setterHandle, &val);
+				Helper::SafeInvokeSetter(instance, prop.setterHandle, &val);
 			}
 			else if (!prop.canWrite)
 				ImGui::Text("%.6f", val);
@@ -413,12 +484,12 @@ void Inspector::RenderEditableProperty(UT::Component* component, const Component
 	case EditableType::Bool:
 	{
 		bool val = false;
-		if (Helper::SafeInvokeGetter(component, prop.getterHandle, &val, sizeof(bool)))
+		if (Helper::SafeInvokeGetter(instance, prop.getterHandle, &val, sizeof(bool)))
 		{
 			if (prop.canWrite)
 			{
 				if (ImGui::Checkbox("##val", &val))
-					Helper::SafeInvokeSetter(component, prop.setterHandle, &val);
+					Helper::SafeInvokeSetter(instance, prop.setterHandle, &val);
 			}
 			else
 				ImGui::Text("%s", val ? "true" : "false");
@@ -429,13 +500,13 @@ void Inspector::RenderEditableProperty(UT::Component* component, const Component
 	case EditableType::Vector2:
 	{
 		UT::Vector2 val = {};
-		if (Helper::SafeInvokeGetter(component, prop.getterHandle, &val, sizeof(UT::Vector2)))
+		if (Helper::SafeInvokeGetter(instance, prop.getterHandle, &val, sizeof(UT::Vector2)))
 		{
 			float arr[2] = { val.x, val.y };
 			if (prop.canWrite && ImGui::DragFloat2("##val", arr, 0.1f))
 			{
 				val.x = arr[0]; val.y = arr[1];
-				Helper::SafeInvokeSetter(component, prop.setterHandle, &val);
+				Helper::SafeInvokeSetter(instance, prop.setterHandle, &val);
 			}
 			else if (!prop.canWrite)
 				ImGui::Text("(%.2f, %.2f)", val.x, val.y);
@@ -446,13 +517,13 @@ void Inspector::RenderEditableProperty(UT::Component* component, const Component
 	case EditableType::Vector3:
 	{
 		UT::Vector3 val = {};
-		if (Helper::SafeInvokeGetter(component, prop.getterHandle, &val, sizeof(UT::Vector3)))
+		if (Helper::SafeInvokeGetter(instance, prop.getterHandle, &val, sizeof(UT::Vector3)))
 		{
 			float arr[3] = { val.x, val.y, val.z };
 			if (prop.canWrite && DragVector3Compact("##val", arr, 0.1f))
 			{
 				val.x = arr[0]; val.y = arr[1]; val.z = arr[2];
-				Helper::SafeInvokeSetter(component, prop.setterHandle, &val);
+				Helper::SafeInvokeSetter(instance, prop.setterHandle, &val);
 			}
 			else if (!prop.canWrite)
 				ImGui::Text("(%.2f, %.2f, %.2f)", val.x, val.y, val.z);
@@ -463,13 +534,13 @@ void Inspector::RenderEditableProperty(UT::Component* component, const Component
 	case EditableType::Vector4:
 	{
 		UT::Vector4 val = {};
-		if (Helper::SafeInvokeGetter(component, prop.getterHandle, &val, sizeof(UT::Vector4)))
+		if (Helper::SafeInvokeGetter(instance, prop.getterHandle, &val, sizeof(UT::Vector4)))
 		{
 			float arr[4] = { val.x, val.y, val.z, val.w };
 			if (prop.canWrite && ImGui::DragFloat4("##val", arr, 0.1f))
 			{
 				val.x = arr[0]; val.y = arr[1]; val.z = arr[2]; val.w = arr[3];
-				Helper::SafeInvokeSetter(component, prop.setterHandle, &val);
+				Helper::SafeInvokeSetter(instance, prop.setterHandle, &val);
 			}
 			else if (!prop.canWrite)
 				ImGui::Text("(%.2f, %.2f, %.2f, %.2f)", val.x, val.y, val.z, val.w);
@@ -480,13 +551,13 @@ void Inspector::RenderEditableProperty(UT::Component* component, const Component
 	case EditableType::Quaternion:
 	{
 		UT::Quaternion val = {};
-		if (Helper::SafeInvokeGetter(component, prop.getterHandle, &val, sizeof(UT::Quaternion)))
+		if (Helper::SafeInvokeGetter(instance, prop.getterHandle, &val, sizeof(UT::Quaternion)))
 		{
 			float arr[4] = { val.x, val.y, val.z, val.w };
 			if (prop.canWrite && DragVector4Compact("##val", arr, 0.01f))
 			{
 				val.x = arr[0]; val.y = arr[1]; val.z = arr[2]; val.w = arr[3];
-				Helper::SafeInvokeSetter(component, prop.setterHandle, &val);
+				Helper::SafeInvokeSetter(instance, prop.setterHandle, &val);
 			}
 			else if (!prop.canWrite)
 				ImGui::Text("(%.3f, %.3f, %.3f, %.3f)", val.x, val.y, val.z, val.w);
@@ -497,13 +568,13 @@ void Inspector::RenderEditableProperty(UT::Component* component, const Component
 	case EditableType::Color:
 	{
 		UT::Color val = {};
-		if (Helper::SafeInvokeGetter(component, prop.getterHandle, &val, sizeof(UT::Color)))
+		if (Helper::SafeInvokeGetter(instance, prop.getterHandle, &val, sizeof(UT::Color)))
 		{
 			float arr[4] = { val.r, val.g, val.b, val.a };
 			if (prop.canWrite && ImGui::ColorEdit4("##val", arr, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar))
 			{
 				val.r = arr[0]; val.g = arr[1]; val.b = arr[2]; val.a = arr[3];
-				Helper::SafeInvokeSetter(component, prop.setterHandle, &val);
+				Helper::SafeInvokeSetter(instance, prop.setterHandle, &val);
 			}
 			else if (!prop.canWrite)
 			{
@@ -615,7 +686,7 @@ void Inspector::RenderTransformSection(UT::Transform* transform, InspectedObject
 	ImGui::Spacing();
 }
 
-void Inspector::RenderFieldsSection(UT::Component* component, const std::vector<ComponentFieldInfo>& fields, InspectedObjectTab& tab, const size_t componentIndex)
+void Inspector::RenderFieldsSection(void* instance, const std::vector<ComponentFieldInfo>& fields, InspectionTarget& target, InspectedObjectTab& tab, const size_t componentIndex)
 {
 	if (fields.empty())
 	{
@@ -623,9 +694,9 @@ void Inspector::RenderFieldsSection(UT::Component* component, const std::vector<
 		return;
 	}
 
-	if (componentIndex >= tab.fieldSearchBuffers.size())
-		tab.fieldSearchBuffers.resize(componentIndex + 1);
-	char* lSearchBuffer = tab.fieldSearchBuffers[componentIndex].data();
+	if (componentIndex >= target.fieldSearchBuffers.size())
+		target.fieldSearchBuffers.resize(componentIndex + 1);
+	char* lSearchBuffer = target.fieldSearchBuffers[componentIndex].data();
 
 	ImGui::InputTextWithHint("##FieldSearch", "Search fields...", lSearchBuffer, 256);
 
@@ -669,17 +740,62 @@ void Inspector::RenderFieldsSection(UT::Component* component, const std::vector<
 		for (const auto* field : filteredFields)
 		{
 			ImGui::TableNextRow();
+            
+			bool isArray = field->typeName.find("[]") != std::string::npos;
+			bool isList = field->typeName.find("System.Collections.Generic.List") != std::string::npos;
+			bool isCollection = !field->isStatic && field->editableType == EditableType::None && (isArray || isList);
+
+			bool isExpanded = false;
+			void* collectionPtr = nullptr;
+			int collectionCount = 0;
+			void* arrayDataStart = nullptr;
 
 			ImGui::TableSetColumnIndex(0);
-			if (field->isStatic)
+			if (isCollection)
 			{
-				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.7f, 1.0f, 1.0f));
-				ImGui::Text("[S] %s", field->name.c_str());
-				ImGui::PopStyleColor();
+				if (Helper::SafeReadPointer(instance, field->offset, collectionPtr) && collectionPtr)
+				{
+					if (isArray)
+					{
+						auto arr = reinterpret_cast<UT::Array<uintptr_t>*>(collectionPtr);
+						collectionCount = static_cast<int>(arr->max_length);
+						arrayDataStart = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(arr) + 0x20);
+					}
+					else
+					{
+						auto list = reinterpret_cast<UT::List<uintptr_t>*>(collectionPtr);
+						collectionCount = list->size;
+						if (list->pList)
+						{
+							arrayDataStart = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(list->pList) + 0x20);
+						}
+					}
+					
+					collectionCount = std::max(0, std::min(collectionCount, 1000));
+
+					ImGui::PushID(field->fieldHandle);
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.8f, 1.0f, 1.0f));
+					isExpanded = ImGui::TreeNodeEx(field->name.c_str(), ImGuiTreeNodeFlags_SpanFullWidth, "%s [%d]", field->name.c_str(), collectionCount);
+					ImGui::PopStyleColor();
+					ImGui::PopID();
+				}
+				else
+				{
+					ImGui::TextUnformatted(field->name.c_str());
+				}
 			}
 			else
 			{
-				ImGui::TextUnformatted(field->name.c_str());
+				if (field->isStatic)
+				{
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.7f, 1.0f, 1.0f));
+					ImGui::Text("[S] %s", field->name.c_str());
+					ImGui::PopStyleColor();
+				}
+				else
+				{
+					ImGui::TextUnformatted(field->name.c_str());
+				}
 			}
 
 			if (ImGui::IsItemHovered())
@@ -700,19 +816,113 @@ void Inspector::RenderFieldsSection(UT::Component* component, const std::vector<
 			ImGui::TextUnformatted(field->typeName.c_str());
 
 			ImGui::TableSetColumnIndex(2);
-			RenderEditableField(component, *field);
+			RenderEditableField(instance, *field);
 
 			ImGui::TableSetColumnIndex(3);
 			if (!field->isStatic && field->editableType == EditableType::None && FieldEditor::IsPointerType(field->typeName))
 			{
 				ImGui::PushID(field->fieldHandle);
-				if (ImGui::SmallButton("Edit"))
+				if (ImGui::SmallButton("Enter"))
 				{
-					if (!fieldEditor)
-						fieldEditor = std::make_unique<FieldEditor>();
-					fieldEditor->OpenFieldEditor(*field, component, "Edit Field: " + field->name);
+					if (auto activeTab = GetActiveTab())
+					{
+						void* instancePtr = nullptr;
+						
+						if (Helper::SafeReadPointer(instance, field->offset, instancePtr) && instancePtr)
+						{
+							InspectionTarget nextTarget;
+							nextTarget.instance = instancePtr;
+							nextTarget.name = field->name;
+							nextTarget.classHandle = field->classHandle;
+							
+							void* targetKlass = field->isValueType ? field->typeClassHandle : nullptr;
+
+							nextTarget.cachedComponents.push_back(reinterpret_cast<UT::Component*>(instancePtr));
+							nextTarget.cachedComponentNames.push_back(field->typeName);
+							nextTarget.cachedComponentFields.push_back(GetObjectFields(instancePtr, targetKlass));
+							nextTarget.cachedComponentProperties.push_back(GetObjectProperties(instancePtr, targetKlass));
+							nextTarget.cachedComponentMethods.push_back(GetObjectMethods(instancePtr, targetKlass));
+
+							activeTab->navigationStack.push_back(std::move(nextTarget));
+						}
+					}
 				}
 				ImGui::PopID();
+			}
+
+			if (isExpanded)
+			{
+				if (arrayDataStart)
+				{
+					std::string elementTypeName = "Element";
+					if (isArray)
+					{
+						size_t pos = field->typeName.find("[]");
+						if (pos != std::string::npos) elementTypeName = field->typeName.substr(0, pos);
+					}
+					else if (isList)
+					{
+						size_t start = field->typeName.find("<");
+						size_t end = field->typeName.rfind(">");
+						if (start != std::string::npos && end != std::string::npos && end > start)
+						{
+							elementTypeName = field->typeName.substr(start + 1, end - start - 1);
+						}
+					}
+
+					for (int i = 0; i < collectionCount; ++i)
+					{
+						ImGui::TableNextRow();
+						
+						ImGui::TableSetColumnIndex(0);
+						ImGui::Indent(15.0f);
+						ImGui::Text("[%d]", i);
+						ImGui::Unindent(15.0f);
+						
+						ImGui::TableSetColumnIndex(1);
+						ImGui::TextDisabled("%s", elementTypeName.c_str());
+					
+					void* elementPtr = nullptr;
+					Helper::SafeReadPointer(arrayDataStart, i * sizeof(void*), elementPtr);
+
+					ImGui::TableSetColumnIndex(2);
+					if (elementPtr)
+					{
+						ImGui::TextDisabled("0x%p", elementPtr);
+					}
+					else
+					{
+						ImGui::TextDisabled("(null)");
+					}
+
+					ImGui::TableSetColumnIndex(3);
+					if (elementPtr)
+					{
+						ImGui::PushID(reinterpret_cast<intptr_t>(arrayDataStart) + i);
+						if (ImGui::SmallButton("Enter"))
+						{
+							if (auto activeTab = GetActiveTab())
+							{
+								InspectionTarget nextTarget;
+								nextTarget.instance = elementPtr;
+								nextTarget.name = field->name + "[" + std::to_string(i) + "]";
+								nextTarget.classHandle = nullptr; 
+								
+								nextTarget.cachedComponents.push_back(reinterpret_cast<UT::Component*>(elementPtr));
+								nextTarget.cachedComponentNames.push_back(elementTypeName);
+
+								nextTarget.cachedComponentFields.push_back(GetObjectFields(elementPtr, nullptr));
+								nextTarget.cachedComponentProperties.push_back(GetObjectProperties(elementPtr, nullptr));
+								nextTarget.cachedComponentMethods.push_back(GetObjectMethods(elementPtr, nullptr));
+
+								activeTab->navigationStack.push_back(std::move(nextTarget));
+							}
+						}
+						ImGui::PopID();
+					}
+				}
+				} // End of if (arrayDataStart)
+				ImGui::TreePop();
 			}
 		}
 
@@ -720,7 +930,7 @@ void Inspector::RenderFieldsSection(UT::Component* component, const std::vector<
 	}
 }
 
-void Inspector::RenderPropertiesSection(UT::Component* component, const std::vector<ComponentPropertyInfo>& properties, InspectedObjectTab& tab, const size_t componentIndex) const
+void Inspector::RenderPropertiesSection(void* instance, const std::vector<ComponentPropertyInfo>& properties, InspectionTarget& target, InspectedObjectTab& tab, const size_t componentIndex) const
 {
 	if (properties.empty())
 	{
@@ -728,9 +938,9 @@ void Inspector::RenderPropertiesSection(UT::Component* component, const std::vec
 		return;
 	}
 
-	if (componentIndex >= tab.propertySearchBuffers.size())
-		tab.propertySearchBuffers.resize(componentIndex + 1);
-	char* lSearchBuffer = tab.propertySearchBuffers[componentIndex].data();
+	if (componentIndex >= target.propertySearchBuffers.size())
+		target.propertySearchBuffers.resize(componentIndex + 1);
+	char* lSearchBuffer = target.propertySearchBuffers[componentIndex].data();
 
 	ImGui::PushItemWidth(-100);
 	ImGui::InputTextWithHint("##PropertySearch", "Search properties...", lSearchBuffer, 256);
@@ -785,14 +995,14 @@ void Inspector::RenderPropertiesSection(UT::Component* component, const std::vec
 			ImGui::TextUnformatted(prop->typeName.c_str());
 
 			ImGui::TableSetColumnIndex(2);
-			RenderEditableProperty(component, *prop);
+			RenderEditableProperty(instance, *prop);
 		}
 
 		ImGui::EndTable();
 	}
 }
 
-void Inspector::RenderMethodsSection(UT::Component* component, const std::vector<ComponentMethodInfo>& methods, InspectedObjectTab& tab, const size_t componentIndex)
+void Inspector::RenderMethodsSection(void* instance, const std::vector<ComponentMethodInfo>& methods, InspectionTarget& target, InspectedObjectTab& tab, const size_t componentIndex)
 {
 	if (methods.empty())
 	{
@@ -800,9 +1010,9 @@ void Inspector::RenderMethodsSection(UT::Component* component, const std::vector
 		return;
 	}
 
-	if (componentIndex >= tab.methodSearchBuffers.size())
-		tab.methodSearchBuffers.resize(componentIndex + 1);
-	char* lSearchBuffer = tab.methodSearchBuffers[componentIndex].data();
+	if (componentIndex >= target.methodSearchBuffers.size())
+		target.methodSearchBuffers.resize(componentIndex + 1);
+	char* lSearchBuffer = target.methodSearchBuffers[componentIndex].data();
 
 	ImGui::PushItemWidth(-150);
 	ImGui::InputTextWithHint("##MethodSearch", "Search methods...", lSearchBuffer, 256);
@@ -896,7 +1106,7 @@ void Inspector::RenderMethodsSection(UT::Component* component, const std::vector
 				if (ImGui::SmallButton("Invoke"))
 				{
 					invokeState.showPopup = true;
-					invokeState.targetComponent = component;
+					invokeState.targetInstance = instance;
 					invokeState.method = *method;
 					invokeState.parameterValues.clear();
 					invokeState.parameterValues.resize(method->parameters.size());
@@ -916,19 +1126,21 @@ void Inspector::RenderMethodsSection(UT::Component* component, const std::vector
 	}
 }
 
-void Inspector::RenderComponentsSection(InspectedObjectTab& tab)
+void Inspector::RenderComponentsSection(InspectionTarget& target, InspectedObjectTab& tab)
 {
 	ImGui::PushItemWidth(-1);
-	ImGui::InputTextWithHint("##ComponentSearch", "Filter components...", tab.componentSearchBuffer, sizeof(tab.componentSearchBuffer));
+	ImGui::InputTextWithHint("##ComponentSearch", "Filter components...", target.componentSearchBuffer, sizeof(target.componentSearchBuffer));
 	ImGui::PopItemWidth();
 
 	ImGui::Spacing();
 
 	std::vector<size_t> filteredComponentIndices;
-	for (size_t i = 0; i < tab.cachedComponents.size(); i++)
+	for (size_t i = 0; i < target.cachedComponents.size(); i++)
 	{
-		const std::string& compName = tab.cachedComponentNames[i];
-		if (PassesComponentFilter(compName, tab.componentSearchBuffer))
+		if (i >= target.cachedComponentNames.size())
+			continue;
+		const std::string& compName = target.cachedComponentNames[i];
+		if (PassesComponentFilter(compName, target.componentSearchBuffer))
 			filteredComponentIndices.push_back(i);
 	}
 
@@ -943,22 +1155,30 @@ void Inspector::RenderComponentsSection(InspectedObjectTab& tab)
 
 	for (const size_t idx : filteredComponentIndices)
 	{
-		const auto comp = tab.cachedComponents[idx];
-		const std::string& compName = tab.cachedComponentNames[idx];
-		const auto& fields = tab.cachedComponentFields[idx];
-		const auto& properties = tab.cachedComponentProperties.size() > idx ? tab.cachedComponentProperties[idx] : std::vector<ComponentPropertyInfo>{};
-		const auto& methods = tab.cachedComponentMethods.size() > idx ? tab.cachedComponentMethods[idx] : std::vector<ComponentMethodInfo>{};
+		if (idx >= target.cachedComponents.size() ||
+		    idx >= target.cachedComponentNames.size() ||
+		    idx >= target.cachedComponentFields.size())
+		    continue;
+
+		const auto comp = target.cachedComponents[idx];
+		const std::string& compName = target.cachedComponentNames[idx];
+		const auto& fields = target.cachedComponentFields[idx];
+		const auto& properties = target.cachedComponentProperties.size() > idx ? target.cachedComponentProperties[idx] : std::vector<ComponentPropertyInfo>{};
+		const auto& methods = target.cachedComponentMethods.size() > idx ? target.cachedComponentMethods[idx] : std::vector<ComponentMethodInfo>{};
 
 		ImGui::PushID(static_cast<int>(idx));
 
 		std::string headerLabel = compName + "##comp";
 
-		if (ImGui::CollapsingHeader(headerLabel.c_str()))
+		int headerFlags = 0;
+		if (target.cachedComponents.size() == 1)
+			headerFlags |= ImGuiTreeNodeFlags_DefaultOpen;
+
+		if (ImGui::CollapsingHeader(headerLabel.c_str(), headerFlags))
 		{
 			ImGui::Indent();
 
-			std::string fullName = GetComponentFullTypeName(comp);
-			ImGui::TextDisabled("Type: %s", fullName.c_str());
+			ImGui::TextDisabled("Type: %s", compName.c_str());
 			ImGui::Spacing();
 
 			std::string fieldsLabel = "Fields";
@@ -966,7 +1186,7 @@ void Inspector::RenderComponentsSection(InspectedObjectTab& tab)
 			if (ImGui::CollapsingHeader(fieldsLabel.c_str()))
 			{
 				ImGui::Indent();
-				RenderFieldsSection(comp, fields, tab, idx);
+				RenderFieldsSection(comp, fields, target, tab, idx);
 				ImGui::Unindent();
 			}
 
@@ -975,7 +1195,7 @@ void Inspector::RenderComponentsSection(InspectedObjectTab& tab)
 			if (ImGui::CollapsingHeader(propsLabel.c_str()))
 			{
 				ImGui::Indent();
-				RenderPropertiesSection(comp, properties, tab, idx);
+				RenderPropertiesSection(comp, properties, target, tab, idx);
 				ImGui::Unindent();
 			}
 
@@ -984,7 +1204,7 @@ void Inspector::RenderComponentsSection(InspectedObjectTab& tab)
 			if (ImGui::CollapsingHeader(methodsLabel.c_str()))
 			{
 				ImGui::Indent();
-				RenderMethodsSection(comp, methods, tab, idx);
+				RenderMethodsSection(comp, methods, target, tab, idx);
 				ImGui::Unindent();
 			}
 
@@ -1070,80 +1290,94 @@ void Inspector::RenderTabContent(InspectedObjectTab& tab)
 		return;
 	}
 
-	std::string objectName = "(Unknown)";
-	if (tab.gameObject && Helper::SafeIsAlive(tab.gameObject))
+	if (tab.navigationStack.empty())
+		return;
+
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 4));
+	for (size_t i = 0; i < tab.navigationStack.size(); ++i)
 	{
-		UT::String* name = nullptr;
-		Helper::SafeGetName(tab.gameObject, name);
-		if (name)
-			objectName = name->ToString();
-	}
-
-	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.9f, 0.7f, 1.0f));
-	ImGui::Text("%s", objectName.c_str());
-	ImGui::PopStyleColor();
-
-	ImGui::SameLine();
-	if (bool isActive = true; Helper::SafeGetActiveSelf(tab.gameObject, isActive))
-	{
-		if (ImGui::Checkbox("Active", &isActive))
-			Helper::SafeSetActive(tab.gameObject, isActive);
-	}
-
-	ImGui::SameLine();
-	if (IsObjectPinned(tab.gameObject))
-	{
-		if (ImGui::SmallButton("Unpin"))
-			UnpinObject(tab.gameObject);
-	}
-	else
-	{
-		if (ImGui::SmallButton("Pin"))
-			PinObject(tab.gameObject);
-	}
-
-	ImGui::SameLine();
-	if (ImGui::SmallButton("Refresh"))
-		RefreshTabData(tab);
-	ImGui::SameLine();
-	ImGui::Checkbox("Auto", &Config::settings.inspector.autoUpdateObject);
-
-	if (!tab.objectPath.empty())
-		ImGui::TextDisabled("Path: %s", tab.objectPath.c_str());
-
-	{
-		if (tab.gameObject && Helper::SafeIsAlive(tab.gameObject))
-		{
-			UT::String* tag;
-			if (const auto validTag = Helper::SafeGetTag(tab.gameObject, tag); tag && validTag)
-			{
-				ImGui::SameLine();
-				ImGui::TextDisabled("| Tag: %s", tag->ToString().c_str());
-			}
-		}
-
-		if (bool isStatic = false; Helper::SafeGetIsStatic(tab.gameObject, isStatic))
+		if (i > 0)
 		{
 			ImGui::SameLine();
-			ImGui::TextDisabled("| Static: %s", isStatic ? "Yes" : "No");
+			ImGui::TextDisabled(">");
+			ImGui::SameLine();
+		}
+		if (ImGui::Button(tab.navigationStack[i].name.c_str()))
+		{
+			tab.navigationStack.resize(i + 1);
 		}
 	}
-
+	ImGui::PopStyleVar();
 	ImGui::Separator();
 
-	if (ImGui::BeginChild("Content", ImVec2(0, 0), false))
+	auto& target = tab.navigationStack.back();
+
+	if (target.gameObject)
 	{
-		UT::Transform* transform = nullptr;
-		if (tab.gameObject && Helper::SafeIsAlive(tab.gameObject))
-			Helper::SafeGetTransform(tab.gameObject, transform);
+		std::string objectName = "(Unknown)";
+		UT::String* name = nullptr;
+		Helper::SafeGetName(target.gameObject, name);
+		if (name) objectName = name->ToString();
 
-		if (transform)
-			RenderTransformSection(transform, tab);
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.9f, 0.7f, 1.0f));
+		ImGui::Text("%s", objectName.c_str());
+		ImGui::PopStyleColor();
+
+		ImGui::SameLine();
+		if (bool isActive = true; Helper::SafeGetActiveSelf(target.gameObject, isActive))
+		{
+			if (ImGui::Checkbox("Active", &isActive))
+				Helper::SafeSetActive(target.gameObject, isActive);
+		}
+
+		ImGui::SameLine();
+		if (IsObjectPinned(target.gameObject))
+		{
+			if (ImGui::SmallButton("Unpin")) UnpinObject(target.gameObject);
+		}
 		else
-			ImGui::TextDisabled("Transform not available");
+		{
+			if (ImGui::SmallButton("Pin")) PinObject(target.gameObject);
+		}
 
-		ImGui::Spacing();
-		RenderComponentsSection(tab);
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Refresh"))
+			RefreshTabData(tab);
+		ImGui::SameLine();
+		ImGui::Checkbox("Auto", &Config::settings.inspector.autoUpdateObject);
+
+		if (!tab.objectPath.empty())
+			ImGui::TextDisabled("Path: %s", tab.objectPath.c_str());
+
+		ImGui::Separator();
+
+		if (ImGui::BeginChild("Content", ImVec2(0, 0), false))
+		{
+			UT::Transform* transform = nullptr;
+			Helper::SafeGetTransform(target.gameObject, transform);
+
+			if (transform)
+				RenderTransformSection(transform, tab);
+			else
+				ImGui::TextDisabled("Transform not available");
+
+			ImGui::Spacing();
+			RenderComponentsSection(target, tab);
+		}
+		ImGui::EndChild();
 	}
-	ImGui::EndChild();
+	
+	
+	else if (target.instance)
+	{
+		ImGui::TextDisabled("Inspecting nested object at %p", target.instance);
+		ImGui::Spacing();
+		if (ImGui::BeginChild("Content", ImVec2(0, 0), false))
+		{
+			RenderComponentsSection(target, tab);
+		}
+		ImGui::EndChild();
+	}
+
+
 }

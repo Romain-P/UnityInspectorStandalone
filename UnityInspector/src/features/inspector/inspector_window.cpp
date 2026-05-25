@@ -187,43 +187,49 @@ void Inspector::RenderEditableField(void* instance, const ComponentFieldInfo& fi
 			else { ImGui::TextDisabled("ERROR"); }
 			break;
 		}
-		case EditableType::CustomObject:
-		{
-			void* instancePtr = nullptr;
-			bool isValid = Helper::SafeGetStaticFieldPointer(field.fieldHandle, instancePtr) && instancePtr != nullptr;
+        case EditableType::CustomObject:
+        {
+            void* instancePtr = nullptr;
+            bool isValid = false;
+            if (field.isValueType)
+            {
+                ImGui::TextDisabled("[static ValueType]");
+            }
+            else
+            {
+                isValid = Helper::SafeGetStaticFieldPointer(field.fieldHandle, instancePtr) && instancePtr != nullptr;
 
-			if (!isValid)
-			{
-				ImGui::TextDisabled("(null)");
-			}
-			else
-			{
-				ImGui::TextDisabled("[static Object]");
-				ImGui::SameLine();
-				if (ImGui::SmallButton("Enter"))
-				{
-					if (auto activeTab = GetActiveTab())
-					{
-						InspectionTarget nextTarget;
-						nextTarget.instance = instancePtr;
-						nextTarget.name = field.name;
-						nextTarget.classHandle = field.classHandle;
-						
-						nextTarget.cachedComponents.push_back(reinterpret_cast<UT::Component*>(instancePtr));
-						nextTarget.cachedComponentNames.push_back(field.typeName);
+                if (!isValid)
+                {
+                    ImGui::TextDisabled("(null)");
+                }
+                else
+                {
+                    ImGui::TextDisabled("[static Object]");
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("Enter"))
+                    {
+                        if (auto activeTab = GetActiveTab())
+                        {
+                            InspectionTarget nextTarget;
+                            nextTarget.instance = instancePtr;
+                            nextTarget.name = field.name;
+                            nextTarget.classHandle = field.classHandle;
+                            
+                            nextTarget.cachedComponents.push_back(reinterpret_cast<UT::Component*>(instancePtr));
+                            nextTarget.cachedComponentNames.push_back(field.typeName);
 
-						void* targetKlass = field.isValueType ? field.typeClassHandle : nullptr;
+                            nextTarget.cachedComponentFields.push_back(GetObjectFields(instancePtr, nullptr));
+                            nextTarget.cachedComponentProperties.push_back(GetObjectProperties(instancePtr, nullptr));
+                            nextTarget.cachedComponentMethods.push_back(GetObjectMethods(instancePtr, nullptr));
 
-						nextTarget.cachedComponentFields.push_back(GetObjectFields(instancePtr, targetKlass));
-						nextTarget.cachedComponentProperties.push_back(GetObjectProperties(instancePtr, targetKlass));
-						nextTarget.cachedComponentMethods.push_back(GetObjectMethods(instancePtr, targetKlass));
-
-						activeTab->navigationStack.push_back(std::move(nextTarget));
-					}
-				}
-			}
-			break;
-		}
+                            activeTab->navigationStack.push_back(std::move(nextTarget));
+                        }
+                    }
+                }
+            }
+            break;
+        }
 		default:
 			ImGui::TextDisabled("[static]");
 			break;
@@ -386,9 +392,16 @@ void Inspector::RenderEditableField(void* instance, const ComponentFieldInfo& fi
                 if (auto activeTab = GetActiveTab())
                 {
                     void* instancePtr = nullptr;
-                    
-                    
-                    if (Helper::SafeReadPointer(instance, field.offset, instancePtr) && instancePtr)
+                    if (field.isValueType)
+                    {
+                        instancePtr = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(instance) + field.offset);
+                    }
+                    else
+                    {
+                        Helper::SafeReadPointer(instance, field.offset, instancePtr);
+                    }
+
+                    if (instancePtr)
                     {
                         InspectionTarget nextTarget;
                         nextTarget.instance = instancePtr;
@@ -405,8 +418,6 @@ void Inspector::RenderEditableField(void* instance, const ComponentFieldInfo& fi
 
                         activeTab->navigationStack.push_back(std::move(nextTarget));
                     }
-
-
                 }
             }
             break;
@@ -828,7 +839,16 @@ void Inspector::RenderFieldsSection(void* instance, const std::vector<ComponentF
 					{
 						void* instancePtr = nullptr;
 						
-						if (Helper::SafeReadPointer(instance, field->offset, instancePtr) && instancePtr)
+						if (field->isValueType)
+						{
+							instancePtr = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(instance) + field->offset);
+						}
+						else
+						{
+							Helper::SafeReadPointer(instance, field->offset, instancePtr);
+						}
+
+						if (instancePtr)
 						{
 							InspectionTarget nextTarget;
 							nextTarget.instance = instancePtr;
